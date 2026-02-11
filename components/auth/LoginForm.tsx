@@ -33,8 +33,7 @@ export function LoginForm() {
         setError("Invalid email or password");
         return;
       }
-      router.push(callbackUrl);
-      router.refresh();
+      window.location.href = callbackUrl;
     } catch {
       setError("Something went wrong");
     } finally {

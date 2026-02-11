@@ -51,6 +51,14 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
+    redirect: async ({ url, baseUrl }) => {
+      if (url.startsWith("/")) {
+        const target = url === "/" ? "/me" : url;
+        return `${baseUrl}${target}`;
+      }
+      if (new URL(url).origin === baseUrl) return url;
+      return `${baseUrl}/me`;
+    },
     session: async ({ session, user }) => {
       if (session.user) {
         session.user.id = user.id;
