@@ -1,6 +1,7 @@
 /**
  * NextAuth configuration: Prisma adapter, Google OAuth, and Credentials (email/password).
- * Session is stored in DB; credentials users are validated against User.password (bcrypt).
+ * Session uses JWT strategy (Credentials provider requires JWT; DB sessions not supported).
+ * Prisma adapter still used for User/Account (Google OAuth).
  */
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
@@ -47,10 +48,16 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   session: {
-    strategy: "database",
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
+    jwt: async ({ token, user }) => {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
     redirect: async ({ url, baseUrl }) => {
       if (url.startsWith("/")) {
         const target = url === "/" ? "/me" : url;
@@ -59,10 +66,9 @@ export const authOptions: NextAuthOptions = {
       if (new URL(url).origin === baseUrl) return url;
       return `${baseUrl}/me`;
     },
-    session: async ({ session, user }) => {
+    session: async ({ session, token }) => {
       if (session.user) {
-        session.user.id = user.id;
-        session.user.image = user.image ?? null;
+        session.user.id = token.id as string;
       }
       return session;
     },
