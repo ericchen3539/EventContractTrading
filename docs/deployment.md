@@ -26,15 +26,29 @@ npx vercel login
 
 ### 3. 配置环境变量
 
-在项目 **Settings** → **Environment Variables** 中添加：
+在项目 **Settings** → **Environment Variables** 中添加（**Production 必须全部配置**）：
 
 | 变量 | 说明 | 示例 |
 |------|------|------|
 | `DATABASE_URL` | 由 Neon 集成自动注入 | - |
-| `NEXTAUTH_URL` | 生产域名 | `https://xxx.vercel.app` |
-| `NEXTAUTH_SECRET` | 随机密钥 | `openssl rand -base64 32` 生成 |
-| `GOOGLE_CLIENT_ID` | Google OAuth（可选） | 从 Google Cloud Console 获取 |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth（可选） | 同上 |
+| `NEXTAUTH_URL` | 生产域名（必填） | `https://event-contract-trading.vercel.app` |
+| `NEXTAUTH_SECRET` | 随机密钥（必填） | `openssl rand -base64 32` 生成 |
+| `GOOGLE_CLIENT_ID` | Google OAuth（Sign in with Google 必需） | 见下方「Google 登录配置」 |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth（同上） | 同上 |
+
+> **若出现 "Application error: a server-side exception"**：通常是 `NEXTAUTH_SECRET` 或 `NEXTAUTH_URL` 未配置。在 Vercel Dashboard → Project → Settings → Environment Variables 中确认 Production 环境已设置上述变量，然后 Redeploy。
+
+### 3.1 Google 登录配置（Sign in with Google）
+
+1. 打开 [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials**
+2. 点击 **Create Credentials** → **OAuth client ID**
+3. 若提示先配置 OAuth 同意屏幕：Application type 选 **External**，填写应用名称、支持邮箱，保存
+4. Application type 选 **Web application**，Name 自定（如 `Event Contract Trading`）
+5. **Authorized redirect URIs** 中添加：
+   - 本地：`http://localhost:3000/api/auth/callback/google`
+   - 生产：`https://<your-project>.vercel.app/api/auth/callback/google`（替换为实际域名）
+6. 点击 **Create**，复制 **Client ID** 和 **Client Secret**
+7. 填入 `.env.local`（本地）或 Vercel 环境变量（生产）
 
 ### 4. 部署
 
@@ -63,4 +77,4 @@ npx vercel --prod
 
 1. 部署完成后，访问 `https://<project>.vercel.app`
 2. 将 `NEXTAUTH_URL` 更新为实际生产域名
-3. 若使用 Google 登录，需在 Google Cloud Console 的 OAuth 凭据中添加授权重定向 URI：`https://<project>.vercel.app/api/auth/callback/google`
+3. Google 登录：若尚未配置，参考上方「3.1 Google 登录配置」，在 OAuth 凭据中补充生产域名重定向 URI
