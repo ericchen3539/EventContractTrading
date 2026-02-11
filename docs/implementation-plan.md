@@ -32,9 +32,9 @@
 | 1    | 初始化         | Next.js、Tailwind、Prisma、`.env.example`          | Done   |
 | 2    | Auth 后端      | NextAuth、Google + Credentials、`lib/auth.ts`      | Done   |
 | 3    | Auth 前端      | `/login`、`/register`、`components/auth/`           | Done   |
-| 4    | 仪表盘骨架     | 布局、导航、鉴权中间件                              |        |
-| 5    | Sites API      | `GET/POST/PUT/DELETE /api/sites`                   |        |
-| 6    | Sites 页面     | `/sites` 列表、`/sites/new`、`/sites/[id]/edit`    |        |
+| 4    | 仪表盘骨架     | 布局、导航、鉴权中间件                              | Done   |
+| 5    | Sites API      | `GET/POST/PUT/DELETE /api/sites`                   | Done   |
+| 6    | Sites 页面     | `/sites` 列表、`/sites/new`、`/sites/[id]/edit`    | Done   |
 | 7    | Kalshi 适配器  | `lib/adapters/types.ts`、`lib/adapters/kalshi.ts`  |        |
 | 8    | Sections API   | `GET/POST /api/sections`                           |        |
 | 9    | Sections UI    | 站点编辑页中板块勾选区块                            |        |
@@ -51,6 +51,15 @@
 
 **单元 3 状态（Done）**  
 已新增 `components/auth/LoginForm.tsx`（邮箱/密码 + Google 登录）、`components/auth/RegisterForm.tsx`（开放注册）、`app/(auth)/login`、`app/(auth)/register`；`app/api/auth/register`（bcrypt 哈希密码）；`components/providers.tsx`（SessionProvider）；布局中已包裹 Providers。
+
+**单元 4 状态（Done）**  
+已创建 `app/(dashboard)/layout.tsx`（`getServerSession` 鉴权，未登录重定向 `/login`）、`components/dashboard/DashboardNav.tsx`（站点管理、事件市场导航 + 退出登录）；`/sites`、`/sites/new`、`/sites/[id]/edit`、`/events` 占位页；根页及 Auth 布局：已登录访问 `/` 或 `/login`/`/register` 时重定向 `/sites`。
+
+**单元 5 状态（Done）**  
+已新增 `lib/encryption.ts`（AES-256-GCM 加解密，ENCRYPTION_KEY 可选）；`app/api/sites/route.ts`（GET 列表、POST 创建）；`app/api/sites/[siteId]/route.ts`（GET 单条、PUT 更新、DELETE 删除）。凭证加密存储，仅返回 hasCredentials 标志；adapterKey 校验为 kalshi。
+
+**单元 6 状态（Done）**  
+已新增 `components/sites/SiteForm.tsx`（新增/编辑表单）、`components/sites/SiteList.tsx`（列表与删除）；`/sites` 服务端拉取列表、`/sites/new` 与 `/sites/[id]/edit` 表单页；编辑时凭证留空则不修改。
 
 ## 4. 文件结构（建议）
 

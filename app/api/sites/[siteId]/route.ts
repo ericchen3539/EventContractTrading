@@ -1,0 +1,155 @@
+/**
+ * Sites API: GET (single site), PUT (update), DELETE (delete).
+ * All operations require authentication and ownership verification.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { encrypt } from "@/lib/encryption";
+
+const ALLOWED_ADAPTER_KEYS = ["kalshi"] as const;
+
+function toPublicSite(site: {
+  id: string;
+  userId: string;
+  name: string;
+  baseUrl: string;
+  adapterKey: string;
+  loginUsername: string | null;
+  loginPassword: string | null;
+  createdAt: Date;
+}) {
+  return {
+    id: site.id,
+    userId: site.userId,
+    name: site.name,
+    baseUrl: site.baseUrl,
+    adapterKey: site.adapterKey,
+    hasCredentials: !!(site.loginUsername || site.loginPassword),
+    createdAt: site.createdAt.toISOString(),
+  };
+}
+
+async function getSiteForUser(siteId: string, userId: string) {
+  return prisma.site.findFirst({
+    where: { id: siteId, userId },
+  });
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ siteId: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { siteId } = await params;
+  const site = await getSiteForUser(siteId, session.user.id);
+  if (!site) {
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(toPublicSite(site));
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ siteId: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { siteId } = await params;
+  const site = await getSiteForUser(siteId, session.user.id);
+  if (!site) {
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  }
+
+  let body: {
+    name?: string;
+    baseUrl?: string;
+    adapterKey?: string;
+    loginUsername?: string;
+    loginPassword?: string;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const updates: {
+    name?: string;
+    baseUrl?: string;
+    adapterKey?: string;
+    loginUsername?: string | null;
+    loginPassword?: string | null;
+  } = {};
+
+  if (typeof body.name === "string") {
+    const name = body.name.trim();
+    if (!name) {
+      return NextResponse.json({ error: "name cannot be empty" }, { status: 400 });
+    }
+    updates.name = name;
+  }
+  if (typeof body.baseUrl === "string") {
+    const baseUrl = body.baseUrl.trim();
+    if (!baseUrl) {
+      return NextResponse.json({ error: "baseUrl cannot be empty" }, { status: 400 });
+    }
+    updates.baseUrl = baseUrl;
+  }
+  if (typeof body.adapterKey === "string") {
+    if (!ALLOWED_ADAPTER_KEYS.includes(body.adapterKey as (typeof ALLOWED_ADAPTER_KEYS)[number])) {
+      return NextResponse.json(
+        { error: `adapterKey must be one of: ${ALLOWED_ADAPTER_KEYS.join(", ")}` },
+        { status: 400 }
+      );
+    }
+    updates.adapterKey = body.adapterKey;
+  }
+  if (body.loginUsername !== undefined) {
+    updates.loginUsername =
+      typeof body.loginUsername === "string" && body.loginUsername.trim()
+        ? encrypt(body.loginUsername.trim())
+        : null;
+  }
+  if (body.loginPassword !== undefined) {
+    updates.loginPassword =
+      typeof body.loginPassword === "string" && body.loginPassword
+        ? encrypt(body.loginPassword)
+        : null;
+  }
+
+  const updated = await prisma.site.update({
+    where: { id: siteId },
+    data: updates,
+  });
+
+  return NextResponse.json(toPublicSite(updated));
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ siteId: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { siteId } = await params;
+  const site = await getSiteForUser(siteId, session.user.id);
+  if (!site) {
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  }
+
+  await prisma.site.delete({ where: { id: siteId } });
+  return NextResponse.json({ success: true });
+}

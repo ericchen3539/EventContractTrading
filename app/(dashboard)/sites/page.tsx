@@ -1,0 +1,55 @@
+/**
+ * Sites list page: fetches user's sites server-side, renders SiteList.
+ * Create/edit/delete via client components.
+ */
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { SiteList } from "@/components/sites/SiteList";
+import Link from "next/link";
+
+function toPublicSite(site: {
+  id: string;
+  name: string;
+  baseUrl: string;
+  adapterKey: string;
+  loginUsername: string | null;
+  loginPassword: string | null;
+  createdAt: Date;
+}) {
+  return {
+    id: site.id,
+    name: site.name,
+    baseUrl: site.baseUrl,
+    adapterKey: site.adapterKey,
+    hasCredentials: !!(site.loginUsername || site.loginPassword),
+    createdAt: site.createdAt.toISOString(),
+  };
+}
+
+export default async function SitesPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return null;
+
+  const sites = await prisma.site.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+          站点管理
+        </h1>
+        <Link
+          href="/sites/new"
+          className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          添加站点
+        </Link>
+      </div>
+      <SiteList sites={sites.map(toPublicSite)} />
+    </div>
+  );
+}
