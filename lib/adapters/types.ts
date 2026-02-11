@@ -20,6 +20,8 @@ export interface SectionInput {
 /** Event/market record for EventCache; adapter returns this shape before DB upsert. */
 export interface EventMarketInput {
   externalId: string;
+  /** Section externalId (e.g. series_ticker) for upsert into EventCache.sectionId. */
+  sectionExternalId: string;
   title: string;
   description?: string;
   endDate?: Date;

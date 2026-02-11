@@ -38,8 +38,8 @@
 | 7    | Kalshi 适配器  | `lib/adapters/types.ts`、`lib/adapters/kalshi.ts`  | Done   |
 | 8    | Sections API   | `GET/POST /api/sections`                           | Done   |
 | 9    | Sections UI    | 站点编辑页中板块勾选区块                            | Done   |
-| 10   | Events API     | `GET /api/sites/[siteId]/events`                   |        |
-| 11   | Events 表格页  | `/events`、TanStack Table                          |        |
+| 10   | Events API     | `GET /api/sites/[siteId]/events`                   | Done   |
+| 11   | Events 表格页  | `/events`、TanStack Table                          | Done   |
 
 **依赖关系：** 1 → 2→3、4 → 5→6 → 7 → 8→9 → 10 → 11
 
@@ -69,6 +69,12 @@
 
 **单元 9 状态（Done）**  
 已新增 `components/sites/SectionSelector.tsx`、`app/api/sections/[sectionId]/route.ts`（PATCH 更新 enabled）；Section 模型增加 `enabled` 字段；站点编辑页 `/sites/[id]/edit` 集成板块勾选区块，支持“从平台同步”与勾选保存。
+
+**单元 10 状态（Done）**  
+已新增 `app/api/sites/[siteId]/events/route.ts`（GET）；调用 Adapter 拉取事件、upsert 到 EventCache、返回 JSON；支持可选 `?sectionIds=id1,id2` 过滤板块；EventMarketInput 增加 `sectionExternalId` 以关联板块。
+
+**单元 11 状态（Done）**  
+已安装 @tanstack/react-table；新增 `components/events-table/EventsTable.tsx`（TanStack Table 表格）、`components/events-table/EventsPageContent.tsx`（站点/板块筛选、刷新、表格容器）；`/events` 页支持选择站点、可选板块过滤、点击刷新拉取事件，表格展示标题、板块、结束日期、交易量、流动性、价格/概率、刷新时间，支持排序与全局搜索。
 
 ## 4. 文件结构（建议）
 

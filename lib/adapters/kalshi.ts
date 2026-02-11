@@ -136,6 +136,7 @@ async function getEventsAndMarkets(
         const endDate = primary?.close_time ?? primary?.expiration_time ?? ev.strike_date;
         results.push({
           externalId: ev.event_ticker,
+          sectionExternalId: seriesTicker,
           title: ev.title,
           description: ev.sub_title ?? undefined,
           endDate: endDate ? new Date(endDate) : undefined,
