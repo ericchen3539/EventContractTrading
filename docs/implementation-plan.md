@@ -27,21 +27,27 @@
 
 ## 3. 可执行单元（按开发顺序）
 
-| 序号 | 单元           | 范围                                               |
-|------|----------------|----------------------------------------------------|
-| 1    | 初始化         | Next.js、Tailwind、Prisma、`.env.example`          |
-| 2    | Auth 后端      | NextAuth、Google + Credentials、`lib/auth.ts`      |
-| 3    | Auth 前端      | `/login`、`/register`、`components/auth/`           |
-| 4    | 仪表盘骨架     | 布局、导航、鉴权中间件                              |
-| 5    | Sites API      | `GET/POST/PUT/DELETE /api/sites`                   |
-| 6    | Sites 页面     | `/sites` 列表、`/sites/new`、`/sites/[id]/edit`    |
-| 7    | Kalshi 适配器  | `lib/adapters/types.ts`、`lib/adapters/kalshi.ts`  |
-| 8    | Sections API   | `GET/POST /api/sections`                           |
-| 9    | Sections UI    | 站点编辑页中板块勾选区块                            |
-| 10   | Events API     | `GET /api/sites/[siteId]/events`                   |
-| 11   | Events 表格页  | `/events`、TanStack Table                          |
+| 序号 | 单元           | 范围                                               | 状态   |
+|------|----------------|----------------------------------------------------|--------|
+| 1    | 初始化         | Next.js、Tailwind、Prisma、`.env.example`          | Done   |
+| 2    | Auth 后端      | NextAuth、Google + Credentials、`lib/auth.ts`      | Done   |
+| 3    | Auth 前端      | `/login`、`/register`、`components/auth/`           |        |
+| 4    | 仪表盘骨架     | 布局、导航、鉴权中间件                              |        |
+| 5    | Sites API      | `GET/POST/PUT/DELETE /api/sites`                   |        |
+| 6    | Sites 页面     | `/sites` 列表、`/sites/new`、`/sites/[id]/edit`    |        |
+| 7    | Kalshi 适配器  | `lib/adapters/types.ts`、`lib/adapters/kalshi.ts`  |        |
+| 8    | Sections API   | `GET/POST /api/sections`                           |        |
+| 9    | Sections UI    | 站点编辑页中板块勾选区块                            |        |
+| 10   | Events API     | `GET /api/sites/[siteId]/events`                   |        |
+| 11   | Events 表格页  | `/events`、TanStack Table                          |        |
 
 **依赖关系：** 1 → 2→3、4 → 5→6 → 7 → 8→9 → 10 → 11
+
+**单元 1 状态（Done）**  
+已搭建 Next.js（App Router）、Tailwind v4（PostCSS + `globals.css`）、Prisma（PostgreSQL，`schema.prisma` 含 User/Account/Session/Site/Section/EventCache）、`lib/db.ts` 单例、`.env.example`（DATABASE_URL 与后续 Auth/加密占位）。
+
+**单元 2 状态（Done）**  
+已安装 next-auth@4、@next-auth/prisma-adapter、bcryptjs；新增 `lib/auth.ts`（PrismaAdapter、Google + Credentials、database session、session callback 写入 user.id）、`app/api/auth/[...nextauth]/route.ts`；Schema 增加 User.image、Session.id 以兼容适配器；`.env.example` 中 NextAuth 变量已启用。
 
 ## 4. 文件结构（建议）
 
