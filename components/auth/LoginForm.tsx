@@ -12,7 +12,7 @@ import Link from "next/link";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/sites";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/me";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

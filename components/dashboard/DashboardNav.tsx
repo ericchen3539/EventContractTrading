@@ -12,6 +12,7 @@ export function DashboardNav() {
   const pathname = usePathname();
 
   const navLinks = [
+    { href: "/me", label: "我的" },
     { href: "/sites", label: "站点管理" },
     { href: "/events", label: "事件市场" },
   ];
