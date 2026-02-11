@@ -35,9 +35,9 @@
 | 4    | 仪表盘骨架     | 布局、导航、鉴权中间件                              | Done   |
 | 5    | Sites API      | `GET/POST/PUT/DELETE /api/sites`                   | Done   |
 | 6    | Sites 页面     | `/sites` 列表、`/sites/new`、`/sites/[id]/edit`    | Done   |
-| 7    | Kalshi 适配器  | `lib/adapters/types.ts`、`lib/adapters/kalshi.ts`  |        |
-| 8    | Sections API   | `GET/POST /api/sections`                           |        |
-| 9    | Sections UI    | 站点编辑页中板块勾选区块                            |        |
+| 7    | Kalshi 适配器  | `lib/adapters/types.ts`、`lib/adapters/kalshi.ts`  | Done   |
+| 8    | Sections API   | `GET/POST /api/sections`                           | Done   |
+| 9    | Sections UI    | 站点编辑页中板块勾选区块                            | Done   |
 | 10   | Events API     | `GET /api/sites/[siteId]/events`                   |        |
 | 11   | Events 表格页  | `/events`、TanStack Table                          |        |
 
@@ -60,6 +60,15 @@
 
 **单元 6 状态（Done）**  
 已新增 `components/sites/SiteForm.tsx`（新增/编辑表单）、`components/sites/SiteList.tsx`（列表与删除）；`/sites` 服务端拉取列表、`/sites/new` 与 `/sites/[id]/edit` 表单页；编辑时凭证留空则不修改。
+
+**单元 7 状态（Done）**  
+已新增 `lib/adapters/types.ts`（Adapter 接口、SectionInput、EventMarketInput）、`lib/adapters/kalshi.ts`（getSections、getEventsAndMarkets）、`lib/adapters/index.ts`（适配器注册表）；Kalshi 以 category=Politics 拉取板块，以 series_ticker + status=open 拉取事件与市场，liquidity 转为美元存储。
+
+**单元 8 状态（Done）**  
+已新增 `app/api/sections/route.ts`：GET 支持 `?siteId=xxx` 返回该站点的板块列表；POST body `{ siteId }` 从 adapter 拉取板块并 upsert 到 DB，移除适配器不再返回的旧板块。
+
+**单元 9 状态（Done）**  
+已新增 `components/sites/SectionSelector.tsx`、`app/api/sections/[sectionId]/route.ts`（PATCH 更新 enabled）；Section 模型增加 `enabled` 字段；站点编辑页 `/sites/[id]/edit` 集成板块勾选区块，支持“从平台同步”与勾选保存。
 
 ## 4. 文件结构（建议）
 

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { SiteForm } from "@/components/sites/SiteForm";
+import { SectionSelector } from "@/components/sites/SectionSelector";
 
 export default async function EditSitePage({
   params,
@@ -42,6 +43,9 @@ export default async function EditSitePage({
       </p>
       <div className="mt-6">
         <SiteForm site={formValues} />
+      </div>
+      <div className="mt-8">
+        <SectionSelector siteId={site.id} />
       </div>
       <Link
         href="/sites"

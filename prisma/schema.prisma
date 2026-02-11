@@ -65,11 +65,12 @@ model Site {
 }
 
 model Section {
-  id         String       @id @default(cuid())
-  siteId     String
-  externalId String
-  name       String
-  urlOrSlug  String?
+  id          String        @id @default(cuid())
+  siteId      String
+  externalId  String
+  name        String
+  urlOrSlug   String?
+  enabled     Boolean       @default(true)
   eventCaches EventCache[]
 
   site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
