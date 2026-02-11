@@ -31,7 +31,7 @@
 |------|----------------|----------------------------------------------------|--------|
 | 1    | 初始化         | Next.js、Tailwind、Prisma、`.env.example`          | Done   |
 | 2    | Auth 后端      | NextAuth、Google + Credentials、`lib/auth.ts`      | Done   |
-| 3    | Auth 前端      | `/login`、`/register`、`components/auth/`           |        |
+| 3    | Auth 前端      | `/login`、`/register`、`components/auth/`           | Done   |
 | 4    | 仪表盘骨架     | 布局、导航、鉴权中间件                              |        |
 | 5    | Sites API      | `GET/POST/PUT/DELETE /api/sites`                   |        |
 | 6    | Sites 页面     | `/sites` 列表、`/sites/new`、`/sites/[id]/edit`    |        |
@@ -48,6 +48,9 @@
 
 **单元 2 状态（Done）**  
 已安装 next-auth@4、@next-auth/prisma-adapter、bcryptjs；新增 `lib/auth.ts`（PrismaAdapter、Google + Credentials、database session、session callback 写入 user.id）、`app/api/auth/[...nextauth]/route.ts`；Schema 增加 User.image、Session.id 以兼容适配器；`.env.example` 中 NextAuth 变量已启用。
+
+**单元 3 状态（Done）**  
+已新增 `components/auth/LoginForm.tsx`（邮箱/密码 + Google 登录）、`components/auth/RegisterForm.tsx`（开放注册）、`app/(auth)/login`、`app/(auth)/register`；`app/api/auth/register`（bcrypt 哈希密码）；`components/providers.tsx`（SessionProvider）；布局中已包裹 Providers。
 
 ## 4. 文件结构（建议）
 
