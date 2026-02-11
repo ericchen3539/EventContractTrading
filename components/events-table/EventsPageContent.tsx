@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { EventsTable, type EventItem } from "./EventsTable";
 
 export type SiteItem = {
@@ -113,13 +113,13 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
     });
   };
 
-  const sectionNameMap = useCallback(() => {
+  const sectionNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const s of sections) {
       map[s.id] = s.name;
     }
     return map;
-  }, [sections])();
+  }, [sections]);
 
   const enabledSections = sections.filter((s) => s.enabled);
 
