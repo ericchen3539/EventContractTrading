@@ -2,6 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { EventsTable, type EventItem } from "./EventsTable";
+import {
+  loadSelectedSiteIds,
+  saveSelectedSiteIds,
+  loadSectionIdsBySite,
+  saveSectionIdsBySite,
+  loadCachedEvents,
+  saveCachedEvents,
+} from "@/lib/events-storage";
 
 export type SiteItem = {
   id: string;
@@ -26,113 +34,209 @@ interface EventsPageContentProps {
 }
 
 /**
- * Events page content: site/section selectors, refresh, and table.
- * Fetches sections when site changes; fetches events on refresh.
+ * Events page content: multi-site/section selectors, persisted state,
+ * per-site update, and table. Results and selections persist in localStorage.
  */
 export function EventsPageContent({ sites }: EventsPageContentProps) {
-  const [selectedSiteId, setSelectedSiteId] = useState<string>("");
-  const [sections, setSections] = useState<SectionItem[]>([]);
-  const [selectedSectionIds, setSelectedSectionIds] = useState<Set<string>>(new Set());
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [loadingSections, setLoadingSections] = useState(false);
-  const [loadingEvents, setLoadingEvents] = useState(false);
+  const siteIds = useMemo(() => sites.map((s) => s.id), [sites]);
+  const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
+
+  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>(() =>
+    loadSelectedSiteIds(siteIds)
+  );
+  const [sectionIdsBySite, setSectionIdsBySite] = useState<
+    Record<string, Set<string>>
+  >(() => {
+    const loaded = loadSectionIdsBySite(siteIds);
+    const out: Record<string, Set<string>> = {};
+    for (const [sid, arr] of Object.entries(loaded)) {
+      out[sid] = new Set(arr);
+    }
+    return out;
+  });
+  const [sectionsBySite, setSectionsBySite] = useState<
+    Record<string, SectionItem[]>
+  >({});
+  const [events, setEvents] = useState<EventItem[]>(() =>
+    loadCachedEvents<EventItem>(siteIds)
+  );
+  const [loadingSectionsBySite, setLoadingSectionsBySite] = useState<
+    Record<string, boolean>
+  >({});
+  const [updatingSiteId, setUpdatingSiteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSections = useCallback(async (siteId: string) => {
-    setError(null);
-    setLoadingSections(true);
-    try {
-      const res = await fetch(`/api/sections?siteId=${encodeURIComponent(siteId)}`);
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "获取板块失败");
-        setSections([]);
-        return;
-      }
-      setSections(Array.isArray(data) ? data : []);
-      setSelectedSectionIds(new Set());
-    } catch {
-      setError("获取板块失败");
-      setSections([]);
-    } finally {
-      setLoadingSections(false);
+  // Persist selectedSiteIds
+  useEffect(() => {
+    saveSelectedSiteIds(selectedSiteIds);
+  }, [selectedSiteIds]);
+
+  // Persist sectionIdsBySite
+  useEffect(() => {
+    const toSave: Record<string, string[]> = {};
+    for (const [siteId, set] of Object.entries(sectionIdsBySite)) {
+      if (set.size > 0) toSave[siteId] = Array.from(set);
     }
-  }, []);
+    saveSectionIdsBySite(toSave);
+  }, [sectionIdsBySite]);
+
+  // Persist events
+  useEffect(() => {
+    saveCachedEvents(events);
+  }, [events]);
+
+  const fetchSectionsForSite = useCallback(
+    async (siteId: string) => {
+      setLoadingSectionsBySite((prev) => ({ ...prev, [siteId]: true }));
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/sections?siteId=${encodeURIComponent(siteId)}`
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "获取板块失败");
+          setSectionsBySite((prev) => ({ ...prev, [siteId]: [] }));
+          return;
+        }
+        const list = Array.isArray(data) ? data : [];
+        setSectionsBySite((prev) => ({ ...prev, [siteId]: list }));
+      } catch {
+        setError("获取板块失败");
+        setSectionsBySite((prev) => ({ ...prev, [siteId]: [] }));
+      } finally {
+        setLoadingSectionsBySite((prev) => ({ ...prev, [siteId]: false }));
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    if (!selectedSiteId) {
-      setSections([]);
-      setEvents([]);
+    if (selectedSiteIds.length === 0) {
+      setSectionsBySite({});
+      return;
+    }
+    for (const siteId of selectedSiteIds) {
+      fetchSectionsForSite(siteId);
+    }
+  }, [selectedSiteIds, fetchSectionsForSite]);
+
+  const updateEventsForSite = useCallback(
+    async (siteId: string) => {
+      const sections = sectionsBySite[siteId] ?? [];
+      const enabledIds = sections.filter((s) => s.enabled).map((s) => s.id);
+      const selected = sectionIdsBySite[siteId];
+      const idsToUse =
+        selected && selected.size > 0
+          ? Array.from(selected).filter((id) => enabledIds.includes(id))
+          : enabledIds;
+
       setError(null);
-      return;
-    }
-    fetchSections(selectedSiteId);
-  }, [selectedSiteId, fetchSections]);
-
-  const fetchEvents = useCallback(async () => {
-    if (!selectedSiteId) {
-      setError("请先选择站点");
-      return;
-    }
-    setError(null);
-    setLoadingEvents(true);
-    setEvents([]);
-    try {
-      const url = new URL(`/api/sites/${selectedSiteId}/events`, window.location.origin);
-      const enabledIds = sections.filter((s) => s.enabled).map((s) => s.id);
-      const idsToUse = selectedSectionIds.size > 0
-        ? Array.from(selectedSectionIds).filter((id) => enabledIds.includes(id))
-        : enabledIds;
-      if (idsToUse.length > 0) {
-        url.searchParams.set("sectionIds", idsToUse.join(","));
-      }
-      const res = await fetch(url.toString(), { credentials: "include" });
-      const statusHint = `[HTTP ${res.status}]`;
-      let data: unknown;
+      setUpdatingSiteId(siteId);
       try {
-        data = await res.json();
-      } catch {
-        const text = await res.text().catch(() => "");
-        setError(text ? `${statusHint} ${text.slice(0, 150)}` : statusHint);
-        return;
+        const url = new URL(
+          `/api/sites/${siteId}/events`,
+          window.location.origin
+        );
+        if (idsToUse.length > 0) {
+          url.searchParams.set("sectionIds", idsToUse.join(","));
+        }
+        const res = await fetch(url.toString(), { credentials: "include" });
+        const statusHint = `[HTTP ${res.status}]`;
+        let data: unknown;
+        try {
+          data = await res.json();
+        } catch {
+          const text = await res.text().catch(() => "");
+          setError(text ? `${statusHint} ${text.slice(0, 150)}` : statusHint);
+          return;
+        }
+        if (!res.ok) {
+          const obj =
+            data && typeof data === "object"
+              ? (data as Record<string, unknown>)
+              : null;
+          const errStr =
+            typeof obj?.error === "string"
+              ? obj.error
+              : typeof obj?.message === "string"
+                ? obj.message
+                : null;
+          setError(
+            errStr ? `${statusHint} ${errStr}` : `${statusHint} 获取事件失败`
+          );
+          return;
+        }
+        const newEvents = Array.isArray(data) ? data : [];
+        setEvents((prev) => {
+          const rest = prev.filter((e) => e.siteId !== siteId);
+          const merged = [...rest, ...newEvents];
+          return merged;
+        });
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : String(err ?? "未知错误");
+        setError(`请求失败: ${msg}`);
+      } finally {
+        setUpdatingSiteId(null);
       }
-      if (!res.ok) {
-        const obj = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
-        const errStr = typeof obj?.error === "string" ? obj.error : typeof obj?.message === "string" ? obj.message : null;
-        setError(errStr ? `${statusHint} ${errStr}` : `${statusHint} 获取事件失败`);
-        return;
-      }
-      setEvents(Array.isArray(data) ? data : []);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err ?? "未知错误");
-      setError(`请求失败: ${msg}`);
-    } finally {
-      setLoadingEvents(false);
-    }
-  }, [selectedSiteId, sections, selectedSectionIds]);
+    },
+    [sectionsBySite, sectionIdsBySite]
+  );
 
-  const toggleSection = (sectionId: string) => {
-    setSelectedSectionIds((prev) => {
-      const enabledIds = sections.filter((s) => s.enabled).map((s) => s.id);
-      const next = new Set(prev.size === 0 ? enabledIds : prev);
+  const updateAllSites = useCallback(async () => {
+    for (const siteId of selectedSiteIds) {
+      await updateEventsForSite(siteId);
+    }
+  }, [selectedSiteIds, updateEventsForSite]);
+
+  const toggleSite = (siteId: string) => {
+    setSelectedSiteIds((prev) =>
+      prev.includes(siteId)
+        ? prev.filter((id) => id !== siteId)
+        : [...prev, siteId]
+    );
+  };
+
+  const toggleSection = (siteId: string, sectionId: string) => {
+    const sections = sectionsBySite[siteId] ?? [];
+    const enabledIds = sections.filter((s) => s.enabled).map((s) => s.id);
+    setSectionIdsBySite((prev) => {
+      const curr = prev[siteId] ?? new Set<string>();
+      const next = new Set(curr.size === 0 ? enabledIds : curr);
       if (next.has(sectionId)) {
         next.delete(sectionId);
       } else {
         next.add(sectionId);
       }
-      return next.size === enabledIds.length ? new Set<string>() : next;
+      const out = { ...prev };
+      out[siteId] =
+        next.size === enabledIds.length ? new Set<string>() : next;
+      return out;
     });
   };
 
   const sectionNameMap = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const s of sections) {
+    for (const list of Object.values(sectionsBySite)) {
+      for (const s of list) {
+        map[s.id] = s.name;
+      }
+    }
+    return map;
+  }, [sectionsBySite]);
+
+  const siteNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of sites) {
       map[s.id] = s.name;
     }
     return map;
-  }, [sections]);
+  }, [sites]);
 
-  const enabledSections = sections.filter((s) => s.enabled);
+  const isUpdatingAny =
+    updatingSiteId !== null ||
+    Object.values(loadingSectionsBySite).some(Boolean);
 
   return (
     <div className="space-y-6">
@@ -141,75 +245,118 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
       </h1>
 
       <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex flex-wrap items-end gap-4">
+        <div className="space-y-4">
           <div>
-            <label htmlFor="site-select" className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              站点
+            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              站点（可多选）
             </label>
-            <select
-              id="site-select"
-              value={selectedSiteId}
-              onChange={(e) => setSelectedSiteId(e.target.value)}
-              className="rounded border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-            >
-              <option value="">请选择站点</option>
+            <div className="mt-2 flex flex-wrap gap-2">
               {sites.map((site) => (
-                <option key={site.id} value={site.id}>
+                <label
+                  key={site.id}
+                  className="flex cursor-pointer items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSiteIds.includes(site.id)}
+                    onChange={() => toggleSite(site.id)}
+                    className="h-3.5 w-3.5 rounded border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600"
+                  />
                   {site.name} ({site.adapterKey})
-                </option>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
-          {selectedSiteId && (
-            <>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  板块筛选（可选）
-                </label>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {selectedSectionIds.size === 0
-                    ? "不选则拉取所有已启用板块"
-                    : `已选 ${selectedSectionIds.size} 个板块`}
-                </p>
-                {loadingSections ? (
-                  <p className="mt-1 text-sm text-zinc-500">加载板块中…</p>
-                ) : enabledSections.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {enabledSections.map((sec) => (
-                      <label
-                        key={sec.id}
-                        className="flex cursor-pointer items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={
-                            selectedSectionIds.size === 0 ||
-                            selectedSectionIds.has(sec.id)
-                          }
-                          onChange={() => toggleSection(sec.id)}
-                          className="h-3.5 w-3.5 rounded border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600"
-                        />
-                        {sec.name}
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm text-zinc-500">
-                    无已启用板块，请先在站点编辑页勾选板块。
-                  </p>
-                )}
-              </div>
+          {selectedSiteIds.length > 0 && (
+            <div className="space-y-3">
+              {selectedSiteIds.map((siteId) => {
+                const site = siteMap.get(siteId);
+                const sections = sectionsBySite[siteId] ?? [];
+                const loading = loadingSectionsBySite[siteId];
+                const enabledSections = sections.filter((s) => s.enabled);
+                const selected = sectionIdsBySite[siteId];
+                const selectedCount =
+                  selected && selected.size > 0 ? selected.size : enabledSections.length;
 
-              <button
-                type="button"
-                onClick={fetchEvents}
-                disabled={loadingEvents || loadingSections}
-                className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                {loadingEvents ? "拉取中…" : "刷新"}
-              </button>
-            </>
+                return (
+                  <div
+                    key={siteId}
+                    className="rounded border border-zinc-200 p-3 dark:border-zinc-700"
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                        {site?.name ?? siteId}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updateEventsForSite(siteId)}
+                        disabled={
+                          isUpdatingAny ||
+                          (loading && updatingSiteId !== siteId)
+                        }
+                        className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                      >
+                        {updatingSiteId === siteId
+                          ? "更新中…"
+                          : "更新"}
+                      </button>
+                    </div>
+                    <div>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        板块筛选：
+                        {selectedCount === 0 || selectedCount === enabledSections.length
+                          ? "全部已启用板块"
+                          : `已选 ${selectedCount} 个`}
+                      </span>
+                      {loading ? (
+                        <p className="mt-1 text-sm text-zinc-500">
+                          加载板块中…
+                        </p>
+                      ) : enabledSections.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {enabledSections.map((sec) => (
+                            <label
+                              key={sec.id}
+                              className="flex cursor-pointer items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  !selected ||
+                                  selected.size === 0 ||
+                                  selected.has(sec.id)
+                                }
+                                onChange={() =>
+                                  toggleSection(siteId, sec.id)
+                                }
+                                className="h-3.5 w-3.5 rounded border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600"
+                              />
+                              {sec.name}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-sm text-zinc-500">
+                          无已启用板块，请先在站点编辑页勾选板块。
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {selectedSiteIds.length > 1 && (
+                <button
+                  type="button"
+                  onClick={updateAllSites}
+                  disabled={isUpdatingAny}
+                  className="rounded bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                >
+                  {updatingSiteId ? "更新中…" : "更新全部"}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -218,7 +365,11 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         )}
       </div>
 
-      <EventsTable events={events} sectionNameMap={sectionNameMap} />
+      <EventsTable
+        events={events}
+        sectionNameMap={sectionNameMap}
+        siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
+      />
     </div>
   );
 }

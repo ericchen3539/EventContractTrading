@@ -32,6 +32,8 @@ export type EventItem = {
 interface EventsTableProps {
   events: EventItem[];
   sectionNameMap: Record<string, string>;
+  /** When provided and multiple sites, show site column */
+  siteNameMap?: Record<string, string>;
 }
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -79,13 +81,27 @@ function formatDate(iso?: string | null): string {
  * Events table powered by TanStack Table.
  * Supports sorting and filtering.
  */
-export function EventsTable({ events, sectionNameMap }: EventsTableProps) {
+export function EventsTable({
+  events,
+  sectionNameMap,
+  siteNameMap,
+}: EventsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
   const columns = useMemo<ColumnDef<EventItem>[]>(
     () => [
+      ...(siteNameMap
+        ? [
+            {
+              accessorKey: "siteId",
+              header: "站点",
+              cell: ({ row }: { row: { original: EventItem } }) =>
+                siteNameMap[row.original.siteId] ?? row.original.siteId,
+            } as ColumnDef<EventItem>,
+          ]
+        : []),
       {
         accessorKey: "title",
         header: "标题",
@@ -132,11 +148,11 @@ export function EventsTable({ events, sectionNameMap }: EventsTableProps) {
       },
       {
         accessorKey: "fetchedAt",
-        header: "刷新时间",
+        header: "更新时间",
         cell: ({ row }) => formatDate(row.original.fetchedAt),
       },
     ],
-    [sectionNameMap]
+    [sectionNameMap, siteNameMap]
   );
 
   const table = useReactTable({
@@ -156,7 +172,7 @@ export function EventsTable({ events, sectionNameMap }: EventsTableProps) {
       <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
         <p className="text-zinc-600 dark:text-zinc-400">暂无事件数据</p>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-          请选择站点并点击「刷新」拉取事件。
+          请选择站点并点击「更新」拉取事件。
         </p>
       </div>
     );
