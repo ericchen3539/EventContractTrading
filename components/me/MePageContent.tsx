@@ -8,6 +8,48 @@ import {
 } from "@/components/events-table/EventsTable";
 import type { SiteItem, SectionItem } from "@/components/events-table/EventsPageContent";
 
+const ATTENTION_FILTER_STORAGE_KEY = "me-page-attention-filter";
+
+type AttentionFilterPreset = "0" | "1" | "2" | "3" | "custom";
+
+function loadAttentionFilterFromStorage(): {
+  preset: AttentionFilterPreset;
+  custom: number;
+} {
+  if (typeof window === "undefined") return { preset: "1", custom: 1 };
+  try {
+    const raw = localStorage.getItem(ATTENTION_FILTER_STORAGE_KEY);
+    if (!raw) return { preset: "1", custom: 1 };
+    const parsed = JSON.parse(raw) as { preset?: string; custom?: number };
+    const preset = ["0", "1", "2", "3", "custom"].includes(parsed?.preset ?? "")
+      ? (parsed.preset as AttentionFilterPreset)
+      : "1";
+    const custom =
+      typeof parsed?.custom === "number" &&
+      !Number.isNaN(parsed.custom) &&
+      parsed.custom >= 0
+        ? parsed.custom
+        : 1;
+    return { preset, custom };
+  } catch {
+    return { preset: "1", custom: 1 };
+  }
+}
+
+function saveAttentionFilterToStorage(
+  preset: AttentionFilterPreset,
+  custom: number
+) {
+  try {
+    localStorage.setItem(
+      ATTENTION_FILTER_STORAGE_KEY,
+      JSON.stringify({ preset, custom })
+    );
+  } catch {
+    // ignore
+  }
+}
+
 /** Event from GET /api/me/followed-events (includes siteName, sectionName, attentionLevel). */
 type FollowedEventItem = EventItem & {
   siteName?: string;
@@ -26,9 +68,15 @@ export function MePageContent({ sites }: MePageContentProps) {
   const [loadingFollowed, setLoadingFollowed] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("top");
   const [attentionFilterPreset, setAttentionFilterPreset] = useState<
-    "0" | "1" | "2" | "3" | "custom"
+    AttentionFilterPreset
   >("1");
   const [attentionFilterCustom, setAttentionFilterCustom] = useState(1);
+
+  useEffect(() => {
+    const { preset, custom } = loadAttentionFilterFromStorage();
+    setAttentionFilterPreset(preset);
+    setAttentionFilterCustom(custom);
+  }, []);
   const attentionFilter =
     attentionFilterPreset === "custom"
       ? attentionFilterCustom
@@ -340,7 +388,10 @@ export function MePageContent({ sites }: MePageContentProps) {
                     type="radio"
                     name="attention-filter"
                     checked={attentionFilterPreset === p}
-                    onChange={() => setAttentionFilterPreset(p)}
+                    onChange={() => {
+                      setAttentionFilterPreset(p);
+                      saveAttentionFilterToStorage(p, attentionFilterCustom);
+                    }}
                     className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                   />
                   {p}
@@ -351,7 +402,10 @@ export function MePageContent({ sites }: MePageContentProps) {
                   type="radio"
                   name="attention-filter"
                   checked={attentionFilterPreset === "custom"}
-                  onChange={() => setAttentionFilterPreset("custom")}
+                  onChange={() => {
+                    setAttentionFilterPreset("custom");
+                    saveAttentionFilterToStorage("custom", attentionFilterCustom);
+                  }}
                   className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                 />
                 自定义
@@ -365,6 +419,7 @@ export function MePageContent({ sites }: MePageContentProps) {
                     const v = parseInt(e.target.value, 10);
                     if (!Number.isNaN(v) && v >= 0) {
                       setAttentionFilterCustom(v);
+                      saveAttentionFilterToStorage("custom", v);
                     }
                   }}
                   className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
