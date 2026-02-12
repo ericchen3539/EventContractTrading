@@ -20,6 +20,8 @@ export type EventItem = {
   externalId: string;
   title: string;
   description?: string;
+  /** Platform-side creation time (e.g. Kalshi market created_time). */
+  createdAt?: string;
   endDate?: string;
   volume?: number;
   liquidity?: number;
@@ -98,6 +100,11 @@ export function EventsTable({ events, sectionNameMap }: EventsTableProps) {
         header: "板块",
         cell: ({ row }) =>
           sectionNameMap[row.original.sectionId] ?? row.original.sectionId,
+      },
+      {
+        accessorKey: "createdAt",
+        header: "创立时间",
+        cell: ({ row }) => formatDate(row.original.createdAt),
       },
       {
         accessorKey: "endDate",

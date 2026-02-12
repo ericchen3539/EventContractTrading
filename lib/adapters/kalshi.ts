@@ -41,6 +41,7 @@ interface KalshiMarket {
   title: string;
   subtitle?: string;
   status: string;
+  created_time?: string;
   close_time?: string;
   expiration_time?: string;
   volume?: number;
@@ -160,11 +161,13 @@ async function getEventsAndMarkets(
       if (noVal !== undefined) outcomes.No = noVal;
 
       const endDate = primary?.close_time ?? primary?.expiration_time ?? ev.strike_date;
+      const createdAt = primary?.created_time ? new Date(primary.created_time) : undefined;
       results.push({
         externalId: ev.event_ticker,
         sectionExternalId: category,
         title: ev.title,
         description: ev.sub_title ?? undefined,
+        createdAt,
         endDate: endDate ? new Date(endDate) : undefined,
         volume: typeof volume === "number" ? volume : undefined,
         liquidity: typeof liquidity === "number" ? liquidity : undefined,
