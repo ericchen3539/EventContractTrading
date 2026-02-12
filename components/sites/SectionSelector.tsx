@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 /** Section as returned by GET /api/sections. */
 export interface SectionItem {
@@ -66,13 +67,18 @@ export function SectionSelector({ siteId }: SectionSelectorProps) {
       });
       const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) {
-        setError(data?.error ?? `Sync failed (${res.status})`);
+        const errMsg = data?.error ?? `同步失败 (${res.status})`;
+        setError(errMsg);
+        toast.error(`从平台同步失败：${errMsg}`);
         return;
       }
       await fetchSections();
       router.refresh();
+      toast.success("板块同步成功");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sync failed");
+      const msg = err instanceof Error ? err.message : "同步失败";
+      setError(msg);
+      toast.error(`从平台同步失败：${msg}`);
     } finally {
       setSyncing(false);
     }
@@ -91,18 +97,22 @@ export function SectionSelector({ siteId }: SectionSelectorProps) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Update failed");
+        const errMsg = data.error ?? "更新失败";
+        setError(errMsg);
         setSections((prev) =>
           prev.map((s) => (s.id === section.id ? { ...s, enabled: section.enabled } : s))
         );
+        toast.error(`更新板块失败：${errMsg}`);
         return;
       }
       router.refresh();
+      toast.success(nextEnabled ? `已启用板块「${section.name}」` : `已禁用板块「${section.name}」`);
     } catch {
       setError("Update failed");
       setSections((prev) =>
         prev.map((s) => (s.id === section.id ? { ...s, enabled: section.enabled } : s))
       );
+      toast.error("更新板块失败：网络或服务器错误，请稍后重试");
     }
   }
 

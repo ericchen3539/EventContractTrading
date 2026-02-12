@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export type SiteItem = {
   id: string;
@@ -32,12 +33,14 @@ export function SiteList({ sites }: SiteListProps) {
       const res = await fetch(`/api/sites/${site.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "删除失败");
+        const errMsg = data.error ?? "删除失败";
+        toast.error(`删除失败：${errMsg}`);
         return;
       }
+      toast.success(`站点「${site.name}」已删除`);
       router.refresh();
     } catch {
-      alert("删除失败");
+      toast.error("删除失败：网络或服务器错误，请稍后重试");
     } finally {
       setDeletingId(null);
     }

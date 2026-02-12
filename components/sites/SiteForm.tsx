@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 
 /**
  * Site form for create and edit.
@@ -63,13 +64,17 @@ export function SiteForm({ site }: SiteFormProps) {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Request failed");
+        const errMsg = data.error ?? "请求失败";
+        setError(errMsg);
+        toast.error(isEdit ? `保存失败：${errMsg}` : `添加失败：${errMsg}`);
         return;
       }
+      toast.success(isEdit ? "站点已保存" : "站点已添加");
       router.push("/sites");
       router.refresh();
     } catch {
       setError("Something went wrong");
+      toast.error(isEdit ? "保存失败：网络或服务器错误，请稍后重试" : "添加失败：网络或服务器错误，请稍后重试");
     } finally {
       setLoading(false);
     }

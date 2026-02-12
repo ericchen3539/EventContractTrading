@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   EventsTable,
   type EventItem,
@@ -236,9 +237,14 @@ export function MePageContent({ sites }: MePageContentProps) {
           );
           setBrowseAttentionMap((prev) => ({ ...prev, [eventId]: level }));
           fetchFollowedEvents();
+          toast.success(level === 0 ? "已设为不再关注" : `关注度已更新为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "更新失败";
+          toast.error(`更新关注度失败：${errMsg}`);
         }
       } catch {
-        // ignore
+        toast.error("更新关注度失败：网络或服务器错误，请稍后重试");
       }
     },
     [fetchFollowedEvents]
@@ -264,9 +270,14 @@ export function MePageContent({ sites }: MePageContentProps) {
             )
           );
           fetchFollowedEvents();
+          toast.success(`已批量更新 ${eventIds.length} 个事件的关注度为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "批量更新失败";
+          toast.error(`批量更新关注度失败：${errMsg}`);
         }
       } catch {
-        // ignore
+        toast.error("批量更新关注度失败：网络或服务器错误，请稍后重试");
       }
     },
     [fetchFollowedEvents]
@@ -348,9 +359,12 @@ export function MePageContent({ sites }: MePageContentProps) {
               : "获取缓存事件失败";
         setBrowseError(errStr);
         setBrowseEvents([]);
+        toast.error(`加载失败：${errStr}`);
         return;
       }
-      setBrowseEvents(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : [];
+      setBrowseEvents(arr);
+      toast.success(arr.length > 0 ? `加载成功，共获取 ${arr.length} 条事件` : "加载成功，当前筛选条件下暂无事件");
       if (Array.isArray(data) && data.length > 0) {
         const selected = sectionIdsBySite[selectedSiteId];
         const sections = sectionsBySite[selectedSiteId] ?? [];
@@ -371,6 +385,7 @@ export function MePageContent({ sites }: MePageContentProps) {
         err instanceof Error ? err.message : String(err ?? "未知错误");
       setBrowseError(`请求失败: ${msg}`);
       setBrowseEvents([]);
+      toast.error(`加载失败：${msg}`);
     } finally {
       setLoadingCached(false);
     }

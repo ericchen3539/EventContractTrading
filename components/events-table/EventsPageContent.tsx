@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { EventsTable, type EventItem } from "./EventsTable";
 
 const EVENTS_PAGE_SITES_STORAGE_KEY = "events-page-selected-sites";
@@ -121,9 +122,14 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         });
         if (res.ok) {
           setAttentionMap((prev) => ({ ...prev, [eventId]: level }));
+          toast.success(level === 0 ? "已设为不再关注" : `关注度已更新为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "更新失败";
+          toast.error(`更新关注度失败：${errMsg}`);
         }
       } catch {
-        // ignore
+        toast.error("更新关注度失败：网络或服务器错误，请稍后重试");
       }
     },
     []
@@ -146,9 +152,14 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           const updates: Record<string, number> = {};
           for (const id of eventIds) updates[id] = level;
           setAttentionMap((prev) => ({ ...prev, ...updates }));
+          toast.success(`已批量更新 ${eventIds.length} 个事件的关注度为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "批量更新失败";
+          toast.error(`批量更新关注度失败：${errMsg}`);
         }
       } catch {
-        // ignore
+        toast.error("批量更新关注度失败：网络或服务器错误，请稍后重试");
       }
     },
     []
@@ -217,9 +228,9 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           data = await res.json();
         } catch {
           const text = await res.text().catch(() => "");
-          setError(
-            `更新失败！${toSemanticError(text || `HTTP ${res.status}`)}`
-          );
+          const errDisplay = `更新失败！${toSemanticError(text || `HTTP ${res.status}`)}`;
+          setError(errDisplay);
+          toast.error(errDisplay);
           return;
         }
         if (!res.ok) {
@@ -233,7 +244,9 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
               : typeof obj?.message === "string"
                 ? (obj.message as string)
                 : `HTTP ${res.status}`;
-          setError(`更新失败！${toSemanticError(errStr)}`);
+          const errDisplay = `更新失败！${toSemanticError(errStr)}`;
+          setError(errDisplay);
+          toast.error(errDisplay);
           return;
         }
         const payload =
@@ -253,11 +266,15 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         const parts: string[] = ["更新成功"];
         if (newCount > 0) parts.push(`新增 ${newCount} 个事件`);
         if (changedCount > 0) parts.push(`变更 ${changedCount} 个事件`);
-        setUpdateResult(parts.length > 1 ? parts.join("，") : parts[0]);
+        const resultMsg = parts.length > 1 ? parts.join("，") : parts[0];
+        setUpdateResult(resultMsg);
+        toast.success(resultMsg);
       } catch (err) {
         const msg =
           err instanceof Error ? err.message : String(err ?? "未知错误");
-        setError(`更新失败！${toSemanticError(msg)}`);
+        const errDisplay = `更新失败！${toSemanticError(msg)}`;
+        setError(errDisplay);
+        toast.error(errDisplay);
       } finally {
         setUpdatingSiteId(null);
       }

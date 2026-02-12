@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 
 /**
  * Registration form: creates a new user via /api/auth/register,
@@ -28,13 +29,17 @@ export function RegisterForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Registration failed");
+        const errMsg = data.error ?? "注册失败";
+        setError(errMsg);
+        toast.error(`注册失败：${errMsg}`);
         return;
       }
+      toast.success("注册成功，请登录");
       router.push("/login?registered=1");
       router.refresh();
     } catch {
       setError("Something went wrong");
+      toast.error("注册失败：网络或服务器错误，请稍后重试");
     } finally {
       setLoading(false);
     }

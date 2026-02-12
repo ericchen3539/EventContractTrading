@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 
 /**
  * Login form: email/password (Credentials) + Google OAuth.
@@ -31,11 +32,14 @@ export function LoginForm() {
       });
       if (res?.error) {
         setError("Invalid email or password");
+        toast.error("登录失败：邮箱或密码错误，请检查后重试");
         return;
       }
+      toast.success("登录成功");
       window.location.href = callbackUrl;
     } catch {
       setError("Something went wrong");
+      toast.error("登录失败：网络或服务器错误，请稍后重试");
     } finally {
       setLoading(false);
     }
