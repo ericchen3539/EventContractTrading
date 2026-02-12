@@ -45,6 +45,19 @@ function toPublicEvent(event: {
 
 export async function GET(
   request: NextRequest,
+  ctx: { params: Promise<{ siteId: string }> }
+) {
+  try {
+    return await handleGet(request, ctx);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Internal server error";
+    console.error("[events] Unhandled error:", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+async function handleGet(
+  request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
   const session = await getServerSession(authOptions);
