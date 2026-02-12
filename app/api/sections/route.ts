@@ -110,32 +110,35 @@ export async function POST(request: NextRequest) {
 
     const externalIds = new Set(adapterSections.map((s) => s.externalId));
 
-    await prisma.$transaction(async (tx) => {
-      for (const sec of adapterSections) {
-        await tx.section.upsert({
+    await prisma.$transaction(
+      async (tx) => {
+        for (const sec of adapterSections) {
+          await tx.section.upsert({
+            where: {
+              siteId_externalId: { siteId, externalId: sec.externalId },
+            },
+            create: {
+              siteId,
+              externalId: sec.externalId,
+              name: sec.name,
+              urlOrSlug: sec.urlOrSlug ?? null,
+            },
+            update: {
+              name: sec.name,
+              urlOrSlug: sec.urlOrSlug ?? null,
+            },
+          });
+        }
+
+        await tx.section.deleteMany({
           where: {
-            siteId_externalId: { siteId, externalId: sec.externalId },
-          },
-          create: {
             siteId,
-            externalId: sec.externalId,
-            name: sec.name,
-            urlOrSlug: sec.urlOrSlug ?? null,
-          },
-          update: {
-            name: sec.name,
-            urlOrSlug: sec.urlOrSlug ?? null,
+            ...(externalIds.size > 0 ? { externalId: { notIn: Array.from(externalIds) } } : {}),
           },
         });
-      }
-
-      await tx.section.deleteMany({
-        where: {
-          siteId,
-          ...(externalIds.size > 0 ? { externalId: { notIn: Array.from(externalIds) } } : {}),
-        },
-      });
-    });
+      },
+      { timeout: 30_000 }
+    );
 
     const sections = await prisma.section.findMany({
       where: { siteId },
