@@ -178,8 +178,10 @@ export function EventsTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [batchLevel, setBatchLevel] = useState(1);
   const [batchOverflowMsg, setBatchOverflowMsg] = useState<string | null>(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchModalLevel, setBatchModalLevel] = useState(1);
+  const [batchApplying, setBatchApplying] = useState(false);
   const paginationEnabled = pageSize != null && pageSize > 0;
   const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
   const [pagination, setPagination] = useState<PaginationState>({
@@ -427,25 +429,34 @@ export function EventsTable({
     selectedIds.length > 0 &&
     onBatchAttentionChange != null;
 
-  const handleBatchApply = useCallback(async () => {
-    if (selectedIds.length > maxSelected) {
-      setBatchOverflowMsg(`最多选择 ${maxSelected} 条，请减少选择后重试`);
-      return;
-    }
-    const handler = onBatchAttentionChange ?? (() => {});
-    try {
-      await Promise.resolve(handler(selectedIds, batchLevel));
-      clearSelection();
-    } catch {
-      // Parent handles error display
-    }
-  }, [
-    selectedIds,
-    batchLevel,
-    maxSelected,
-    onBatchAttentionChange,
-    clearSelection,
-  ]);
+  const handleBatchConfirm = useCallback(
+    async (level: number) => {
+      if (selectedIds.length > maxSelected) {
+        setBatchOverflowMsg(`最多选择 ${maxSelected} 条，请减少选择后重试`);
+        return;
+      }
+      if (level < 0 || !Number.isInteger(level)) {
+        return;
+      }
+      const handler = onBatchAttentionChange ?? (() => {});
+      setBatchApplying(true);
+      try {
+        await Promise.resolve(handler(selectedIds, level));
+        setShowBatchModal(false);
+        clearSelection();
+      } catch {
+        // Parent handles error display
+      } finally {
+        setBatchApplying(false);
+      }
+    },
+    [
+      selectedIds,
+      maxSelected,
+      onBatchAttentionChange,
+      clearSelection,
+    ]
+  );
 
   if (events.length === 0) {
     const main = emptyStateMessage ?? "暂无事件数据";
@@ -482,29 +493,16 @@ export function EventsTable({
                 {batchOverflowMsg}
               </span>
             )}
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-slate-600 dark:text-slate-400">
-                关注度
-              </span>
-              <select
-                value={batchLevel}
-                onChange={(e) => setBatchLevel(parseInt(e.target.value, 10))}
-                className="rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              >
-                {[0, 1, 2, 3].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
             <button
               type="button"
-              onClick={handleBatchApply}
+              onClick={() => {
+                setShowBatchModal(true);
+                setBatchModalLevel(1);
+              }}
               disabled={selectedIds.length > maxSelected}
               className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
             >
-              批量设置
+              批量修改
             </button>
             <button
               type="button"
@@ -513,6 +511,63 @@ export function EventsTable({
             >
               取消选择
             </button>
+          </div>
+        )}
+        {showBatchModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={() => !batchApplying && setShowBatchModal(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="batch-modal-title"
+          >
+            <div
+              className="rounded-lg border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2
+                id="batch-modal-title"
+                className="mb-3 text-lg font-medium text-slate-800 dark:text-slate-200"
+              >
+                批量修改关注度
+              </h2>
+              <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">
+                将已选 {selectedIds.length} 项事件的关注度修改为：
+              </p>
+              <div className="mb-4 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={batchModalLevel}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    const n = Number.isNaN(v) ? 0 : Math.max(0, Math.floor(v));
+                    setBatchModalLevel(n);
+                  }}
+                  className="w-24 rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  disabled={batchApplying}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => !batchApplying && setShowBatchModal(false)}
+                  disabled={batchApplying}
+                  className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-700 dark:text-slate-300 disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBatchConfirm(batchModalLevel)}
+                  disabled={batchApplying}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+                >
+                  {batchApplying ? "处理中…" : "确认"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
