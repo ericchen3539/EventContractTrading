@@ -39,6 +39,8 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
     Record<string, SectionItem[]>
   >({});
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [newEvents, setNewEvents] = useState<EventItem[]>([]);
+  const [changedEvents, setChangedEvents] = useState<EventItem[]>([]);
   const [loadingSectionsBySite, setLoadingSectionsBySite] = useState<
     Record<string, boolean>
   >({});
@@ -174,10 +176,22 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           );
           return;
         }
-        const newEvents = Array.isArray(data) ? data : [];
+        const payload =
+          data &&
+          typeof data === "object" &&
+          "newEvents" in data &&
+          "changedEvents" in data
+            ? (data as { newEvents: EventItem[]; changedEvents: EventItem[] })
+            : { newEvents: [] as EventItem[], changedEvents: [] as EventItem[] };
+        const apiNew = payload.newEvents ?? [];
+        const apiChanged = payload.changedEvents ?? [];
+        const allFromUpdate = [...apiNew, ...apiChanged] as EventItem[];
+
+        setNewEvents(apiNew as EventItem[]);
+        setChangedEvents(apiChanged as EventItem[]);
         setEvents((prev) => {
           const rest = prev.filter((e) => e.siteId !== siteId);
-          const merged = [...rest, ...newEvents];
+          const merged = [...rest, ...allFromUpdate];
           merged.sort((a, b) => {
             const aT = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
             const bT = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
@@ -377,14 +391,53 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         )}
       </div>
 
-      <EventsTable
-        events={events}
-        sectionNameMap={sectionNameMap}
-        siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
-        followedIds={followedIds}
-        onFollow={handleFollow}
-        onUnfollow={handleUnfollow}
-      />
+      {newEvents.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            新增事件
+          </h2>
+          <EventsTable
+            events={newEvents}
+            sectionNameMap={sectionNameMap}
+            siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
+            followedIds={followedIds}
+            onFollow={handleFollow}
+            onUnfollow={handleUnfollow}
+          />
+        </div>
+      )}
+
+      {changedEvents.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            变更事件
+          </h2>
+          <EventsTable
+            events={changedEvents}
+            sectionNameMap={sectionNameMap}
+            siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
+            followedIds={followedIds}
+            onFollow={handleFollow}
+            onUnfollow={handleUnfollow}
+          />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {events.length > 0 && (
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            全部事件
+          </h2>
+        )}
+        <EventsTable
+          events={events}
+          sectionNameMap={sectionNameMap}
+          siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
+          followedIds={followedIds}
+          onFollow={handleFollow}
+          onUnfollow={handleUnfollow}
+        />
+      </div>
     </div>
   );
 }
