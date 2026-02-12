@@ -14,7 +14,7 @@ import {
 } from "@tanstack/react-table";
 import { useState, useMemo, useEffect } from "react";
 
-/** Event as returned by GET /api/sites/[siteId]/events */
+/** Event as returned by GET /api/sites/[siteId]/events or GET /api/me/followed-events */
 export type EventItem = {
   id: string;
   siteId: string;
@@ -29,6 +29,8 @@ export type EventItem = {
   liquidity?: number;
   outcomes?: Record<string, number>;
   fetchedAt: string;
+  /** From followed-events API; absent for event market (display as 1) */
+  attentionLevel?: number;
 };
 
 interface EventsTableProps {
@@ -36,10 +38,10 @@ interface EventsTableProps {
   sectionNameMap: Record<string, string>;
   /** When provided and multiple sites, show site column */
   siteNameMap?: Record<string, string>;
-  /** When provided, show follow column with 关注/已关注 buttons */
-  followedIds?: Set<string>;
-  onFollow?: (eventId: string) => void;
-  onUnfollow?: (eventId: string) => void;
+  /** eventId -> attentionLevel; absent = display as 1 */
+  attentionMap?: Record<string, number>;
+  /** When provided, show attention column for all events */
+  onAttentionChange?: (eventId: string, level: number) => void;
   /** Custom empty state message */
   emptyStateMessage?: string;
   emptyStateSubMessage?: string;
@@ -73,6 +75,48 @@ function formatUsd(value?: number | null): string {
   }).format(value);
 }
 
+/** Attention level input: non-negative integer, 0 = 不再关注 */
+function AttentionCell({
+  eventId,
+  value,
+  onAttentionChange,
+}: {
+  eventId: string;
+  value: number;
+  onAttentionChange: (eventId: string, level: number) => void;
+}) {
+  const [pending, setPending] = useState<string | null>(null);
+  const displayValue = pending ?? String(value);
+
+  const handleBlur = () => {
+    if (pending == null) return;
+    const n = parseInt(pending, 10);
+    if (!Number.isNaN(n) && n >= 0) {
+      onAttentionChange(eventId, n);
+    }
+    setPending(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleBlur();
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      min={0}
+      step={1}
+      value={displayValue}
+      onChange={(e) => setPending(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+    />
+  );
+}
+
 /** Format ISO date string */
 function formatDate(iso?: string | null): string {
   if (!iso) return "—";
@@ -100,9 +144,8 @@ export function EventsTable({
   events,
   sectionNameMap,
   siteNameMap,
-  followedIds,
-  onFollow,
-  onUnfollow,
+  attentionMap,
+  onAttentionChange,
   emptyStateMessage,
   emptyStateSubMessage,
   pageSize,
@@ -189,46 +232,27 @@ export function EventsTable({
         header: "更新时间",
         cell: ({ row }) => formatDate(row.original.fetchedAt),
       },
-      ...(onFollow && onUnfollow
+      ...(onAttentionChange
         ? [
             {
-              id: "follow",
-              header: "操作",
-              cell: ({ row }: { row: { original: EventItem } }) => {
-                const eventId = row.original.id;
-                const isFollowed = followedIds?.has(eventId) ?? false;
-                return (
-                  <div className="flex items-center gap-2">
-                    {isFollowed ? (
-                      <>
-                        <span className="text-sm text-slate-500 dark:text-slate-400">
-                          已关注
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => onUnfollow(eventId)}
-                          className="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
-                        >
-                          取消
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onFollow(eventId)}
-                        className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400"
-                      >
-                        关注
-                      </button>
-                    )}
-                  </div>
-                );
-              },
+              id: "attention",
+              header: "关注度",
+              cell: ({ row }: { row: { original: EventItem } }) => (
+                <AttentionCell
+                  eventId={row.original.id}
+                  value={
+                    row.original.attentionLevel ??
+                    attentionMap?.[row.original.id] ??
+                    1
+                  }
+                  onAttentionChange={onAttentionChange}
+                />
+              ),
             } as ColumnDef<EventItem>,
           ]
         : []),
     ],
-    [sectionNameMap, siteNameMap, followedIds, onFollow, onUnfollow]
+    [sectionNameMap, siteNameMap, attentionMap, onAttentionChange]
   );
 
   const table = useReactTable({

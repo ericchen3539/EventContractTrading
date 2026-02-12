@@ -8,11 +8,14 @@ import {
 } from "@/components/events-table/EventsTable";
 import type { SiteItem, SectionItem } from "@/components/events-table/EventsPageContent";
 
-/** Event from GET /api/me/followed-events (includes siteName, sectionName). */
+/** Event from GET /api/me/followed-events (includes siteName, sectionName, attentionLevel). */
 type FollowedEventItem = EventItem & {
   siteName?: string;
   sectionName?: string;
+  attentionLevel?: number;
 };
+
+type ViewMode = "top" | "normal" | "unfollowed";
 
 interface MePageContentProps {
   sites: SiteItem[];
@@ -21,7 +24,15 @@ interface MePageContentProps {
 export function MePageContent({ sites }: MePageContentProps) {
   const [followedEvents, setFollowedEvents] = useState<FollowedEventItem[]>([]);
   const [loadingFollowed, setLoadingFollowed] = useState(true);
-  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<ViewMode>("top");
+  const [attentionFilterPreset, setAttentionFilterPreset] = useState<
+    "0" | "1" | "2" | "3" | "custom"
+  >("1");
+  const [attentionFilterCustom, setAttentionFilterCustom] = useState(1);
+  const attentionFilter =
+    attentionFilterPreset === "custom"
+      ? attentionFilterCustom
+      : parseInt(attentionFilterPreset, 10);
 
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [sectionIdsBySite, setSectionIdsBySite] = useState<
@@ -34,6 +45,9 @@ export function MePageContent({ sites }: MePageContentProps) {
   const [browseEvents, setBrowseEvents] = useState<EventItem[]>([]);
   const [loadingCached, setLoadingCached] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
+  const [browseAttentionMap, setBrowseAttentionMap] = useState<
+    Record<string, number>
+  >({});
 
   const [daysFilterPreset, setDaysFilterPreset] = useState<
     "3" | "7" | "30" | "all" | "custom"
@@ -49,14 +63,37 @@ export function MePageContent({ sites }: MePageContentProps) {
 
   const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
 
+  const fetchBrowseAttentionMap = useCallback(async () => {
+    try {
+      const res = await fetch("/api/me/attention-map");
+      const data = await res.json();
+      if (res.ok && data && typeof data === "object") {
+        setBrowseAttentionMap(data as Record<string, number>);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBrowseAttentionMap();
+  }, [fetchBrowseAttentionMap]);
+
   const fetchFollowedEvents = useCallback(async () => {
     setLoadingFollowed(true);
     try {
-      const res = await fetch("/api/me/followed-events");
+      const url = new URL("/api/me/followed-events", window.location.origin);
+      if (viewMode === "top") {
+        url.searchParams.set("mode", "top");
+      } else if (viewMode === "unfollowed") {
+        url.searchParams.set("unfollowed", "true");
+      } else {
+        url.searchParams.set("minAttention", String(attentionFilter));
+      }
+      const res = await fetch(url.toString());
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
         setFollowedEvents(data);
-        setFollowedIds(new Set(data.map((e: FollowedEventItem) => e.id)));
       } else {
         setFollowedEvents([]);
       }
@@ -65,43 +102,43 @@ export function MePageContent({ sites }: MePageContentProps) {
     } finally {
       setLoadingFollowed(false);
     }
-  }, []);
+  }, [viewMode, attentionFilter]);
 
   useEffect(() => {
     fetchFollowedEvents();
   }, [fetchFollowedEvents]);
 
-  const handleFollow = useCallback(async (eventId: string) => {
-    try {
-      const res = await fetch(`/api/events/${eventId}/follow`, {
-        method: "POST",
-      });
-      if (res.ok) {
-        setFollowedIds((prev) => new Set([...prev, eventId]));
-        fetchFollowedEvents();
-      }
-    } catch {
-      // ignore
-    }
-  }, [fetchFollowedEvents]);
-
-  const handleUnfollow = useCallback(async (eventId: string) => {
-    try {
-      const res = await fetch(`/api/events/${eventId}/follow`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        setFollowedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(eventId);
-          return next;
+  const handleAttentionChange = useCallback(
+    async (eventId: string, level: number) => {
+      try {
+        const res = await fetch(`/api/events/${eventId}/attention`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attentionLevel: level }),
         });
-        setFollowedEvents((prev) => prev.filter((e) => e.id !== eventId));
+        if (res.ok) {
+          setFollowedEvents((prev) =>
+            prev.map((e) =>
+              e.id === eventId ? { ...e, attentionLevel: level } : e
+            )
+          );
+          setBrowseAttentionMap((prev) => ({ ...prev, [eventId]: level }));
+          fetchFollowedEvents();
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
+    },
+    [fetchFollowedEvents]
+  );
+
+  const followedAttentionMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of followedEvents) {
+      if (e.attentionLevel != null) map[e.id] = e.attentionLevel;
     }
-  }, []);
+    return map;
+  }, [followedEvents]);
 
   const fetchSectionsForSite = useCallback(async (siteId: string) => {
     setLoadingSections(true);
@@ -250,9 +287,92 @@ export function MePageContent({ sites }: MePageContentProps) {
       </h1>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
-          我的事件
-        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            我的事件
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setViewMode("top")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                viewMode === "top"
+                  ? "bg-blue-600 text-white dark:bg-blue-500"
+                  : "border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+            >
+              我最关注
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("normal")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                viewMode === "normal"
+                  ? "bg-blue-600 text-white dark:bg-blue-500"
+                  : "border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+            >
+              按关注度筛选
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("unfollowed")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                viewMode === "unfollowed"
+                  ? "bg-blue-600 text-white dark:bg-blue-500"
+                  : "border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+            >
+              不再关注
+            </button>
+          </div>
+          {viewMode === "normal" && (
+            <div className="ml-2 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
+                关注度 ≥
+              </span>
+              {(["0", "1", "2", "3"] as const).map((p) => (
+                <label
+                  key={p}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
+                >
+                  <input
+                    type="radio"
+                    name="attention-filter"
+                    checked={attentionFilterPreset === p}
+                    onChange={() => setAttentionFilterPreset(p)}
+                    className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                  />
+                  {p}
+                </label>
+              ))}
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800">
+                <input
+                  type="radio"
+                  name="attention-filter"
+                  checked={attentionFilterPreset === "custom"}
+                  onChange={() => setAttentionFilterPreset("custom")}
+                  className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                />
+                自定义
+              </label>
+              {attentionFilterPreset === "custom" && (
+                <input
+                  type="number"
+                  min={0}
+                  value={attentionFilterCustom}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!Number.isNaN(v) && v >= 0) {
+                      setAttentionFilterCustom(v);
+                    }
+                  }}
+                  className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
+                />
+              )}
+            </div>
+          )}
+        </div>
 
         {loadingFollowed ? (
           <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
@@ -260,7 +380,11 @@ export function MePageContent({ sites }: MePageContentProps) {
           </div>
         ) : followedEvents.length === 0 ? (
           <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-slate-600 dark:text-slate-400">暂无关注事件</p>
+            <p className="text-slate-600 dark:text-slate-400">
+              {viewMode === "unfollowed"
+                ? "暂无不再关注的事件"
+                : "暂无关注事件"}
+            </p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
               前往{" "}
               <Link
@@ -269,7 +393,7 @@ export function MePageContent({ sites }: MePageContentProps) {
               >
                 事件市场
               </Link>{" "}
-              或在下方浏览并添加关注
+              或在下方浏览并设置关注度
             </p>
           </div>
         ) : (
@@ -281,9 +405,8 @@ export function MePageContent({ sites }: MePageContentProps) {
                 ? followedSiteNameMap
                 : undefined
             }
-            followedIds={followedIds}
-            onFollow={handleFollow}
-            onUnfollow={handleUnfollow}
+            attentionMap={followedAttentionMap}
+            onAttentionChange={handleAttentionChange}
           />
         )}
       </div>
@@ -435,9 +558,8 @@ export function MePageContent({ sites }: MePageContentProps) {
           events={browseEvents}
           sectionNameMap={browseSectionNameMap}
           siteNameMap={undefined}
-          followedIds={followedIds}
-          onFollow={handleFollow}
-          onUnfollow={handleUnfollow}
+          attentionMap={browseAttentionMap}
+          onAttentionChange={handleAttentionChange}
           emptyStateMessage={
             !selectedSiteId
               ? "请选择站点和板块后点击加载"

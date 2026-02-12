@@ -1,22 +1,57 @@
 /**
  * GET /api/me/followed-events
- * Returns full event list for the current user's followed events.
- * Includes siteName and sectionName for display.
+ * Returns events for the current user's followed events.
+ * Query params:
+ *   - minAttention: show events with attentionLevel >= value (default 1)
+ *   - unfollowed: when "true", show only attentionLevel === 0
+ *   - mode: "top" = show only events with attentionLevel === max
  */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const minAttentionParam = searchParams.get("minAttention");
+    const showUnfollowed = searchParams.get("unfollowed") === "true";
+    const mode = searchParams.get("mode"); // "top" = 我最关注
+
+    type WhereClause = {
+      userId: string;
+      attentionLevel?: number | { gte: number };
+    };
+    let whereClause: WhereClause = {
+      userId: session.user.id,
+    };
+
+    if (showUnfollowed) {
+      whereClause.attentionLevel = 0;
+    } else if (mode === "top") {
+      const maxRow = await prisma.userFollowedEvent.aggregate({
+        where: { userId: session.user.id },
+        _max: { attentionLevel: true },
+      });
+      const maxLevel = maxRow._max.attentionLevel ?? 0;
+      whereClause.attentionLevel = maxLevel;
+    } else {
+      const minAttention =
+        minAttentionParam != null && minAttentionParam !== ""
+          ? parseInt(minAttentionParam, 10)
+          : 1;
+      if (!Number.isNaN(minAttention) && minAttention >= 0) {
+        whereClause.attentionLevel = { gte: minAttention };
+      }
+    }
+
     const rows = await prisma.userFollowedEvent.findMany({
-      where: { userId: session.user.id },
+      where: whereClause,
       include: {
         eventCache: {
           include: {
@@ -25,13 +60,13 @@ export async function GET() {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
     });
 
     const events = rows
-      .map((r) => r.eventCache)
-      .filter((ec): ec is NonNullable<typeof ec> => ec != null)
-      .map((ec) => ({
+      .filter((r) => r.eventCache != null)
+      .map((r) => {
+        const ec = r.eventCache!;
+        return {
         id: ec.id,
         siteId: ec.siteId,
         sectionId: ec.sectionId,
@@ -46,7 +81,9 @@ export async function GET() {
         fetchedAt: ec.fetchedAt.toISOString(),
         siteName: ec.site.name,
         sectionName: ec.section.name,
-      }))
+        attentionLevel: r.attentionLevel,
+      };
+      })
       .sort((a, b) => {
         const aT = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
         const bT = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;

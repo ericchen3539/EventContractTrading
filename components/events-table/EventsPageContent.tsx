@@ -57,14 +57,14 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   const [updatingSiteId, setUpdatingSiteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
-  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [attentionMap, setAttentionMap] = useState<Record<string, number>>({});
 
-  const fetchFollowedIds = useCallback(async () => {
+  const fetchAttentionMap = useCallback(async () => {
     try {
-      const res = await fetch("/api/me/followed-event-ids");
+      const res = await fetch("/api/me/attention-map");
       const data = await res.json();
-      if (res.ok && Array.isArray(data)) {
-        setFollowedIds(new Set(data));
+      if (res.ok && data && typeof data === "object") {
+        setAttentionMap(data as Record<string, number>);
       }
     } catch {
       // ignore
@@ -72,38 +72,26 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   }, []);
 
   useEffect(() => {
-    fetchFollowedIds();
-  }, [fetchFollowedIds]);
+    fetchAttentionMap();
+  }, [fetchAttentionMap]);
 
-  const handleFollow = useCallback(async (eventId: string) => {
-    try {
-      const res = await fetch(`/api/events/${eventId}/follow`, {
-        method: "POST",
-      });
-      if (res.ok) {
-        setFollowedIds((prev) => new Set([...prev, eventId]));
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const handleUnfollow = useCallback(async (eventId: string) => {
-    try {
-      const res = await fetch(`/api/events/${eventId}/follow`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        setFollowedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(eventId);
-          return next;
+  const handleAttentionChange = useCallback(
+    async (eventId: string, level: number) => {
+      try {
+        const res = await fetch(`/api/events/${eventId}/attention`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attentionLevel: level }),
         });
+        if (res.ok) {
+          setAttentionMap((prev) => ({ ...prev, [eventId]: level }));
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
-  }, []);
+    },
+    []
+  );
 
   const fetchSectionsForSite = useCallback(
     async (siteId: string) => {
@@ -415,9 +403,8 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             events={newEvents}
             sectionNameMap={sectionNameMap}
             siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
-            followedIds={followedIds}
-            onFollow={handleFollow}
-            onUnfollow={handleUnfollow}
+            attentionMap={attentionMap}
+            onAttentionChange={handleAttentionChange}
             pageSize={10}
           />
         </div>
@@ -432,9 +419,8 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             events={changedEvents}
             sectionNameMap={sectionNameMap}
             siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
-            followedIds={followedIds}
-            onFollow={handleFollow}
-            onUnfollow={handleUnfollow}
+            attentionMap={attentionMap}
+            onAttentionChange={handleAttentionChange}
             pageSize={10}
             highlightColumns={["createdAt", "endDate"]}
           />
