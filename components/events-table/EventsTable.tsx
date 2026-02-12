@@ -45,6 +45,8 @@ interface EventsTableProps {
   emptyStateSubMessage?: string;
   /** When provided, enable pagination with this page size (e.g. 10). Omit to show all rows. */
   pageSize?: number;
+  /** Column accessor keys to render in red (e.g. changed attributes). */
+  highlightColumns?: string[];
 }
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -104,7 +106,12 @@ export function EventsTable({
   emptyStateMessage,
   emptyStateSubMessage,
   pageSize,
+  highlightColumns,
 }: EventsTableProps) {
+  const highlightSet = useMemo(
+    () => new Set(highlightColumns ?? []),
+    [highlightColumns]
+  );
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: false },
   ]);
@@ -307,14 +314,21 @@ export function EventsTable({
                 key={row.id}
                 className="hover:bg-slate-50 dark:hover:bg-slate-800/50"
               >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100"
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const isHighlight = highlightSet.has(cell.column.id);
+                  return (
+                    <td
+                      key={cell.id}
+                      className={`px-4 py-3 text-sm ${
+                        isHighlight
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-slate-900 dark:text-slate-100"
+                      }`}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

@@ -49,7 +49,6 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   const [sectionsBySite, setSectionsBySite] = useState<
     Record<string, SectionItem[]>
   >({});
-  const [events, setEvents] = useState<EventItem[]>([]);
   const [newEvents, setNewEvents] = useState<EventItem[]>([]);
   const [changedEvents, setChangedEvents] = useState<EventItem[]>([]);
   const [loadingSectionsBySite, setLoadingSectionsBySite] = useState<
@@ -197,7 +196,6 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             : { newEvents: [] as EventItem[], changedEvents: [] as EventItem[] };
         const apiNew = payload.newEvents ?? [];
         const apiChanged = payload.changedEvents ?? [];
-        const allFromUpdate = [...apiNew, ...apiChanged] as EventItem[];
 
         setNewEvents(apiNew as EventItem[]);
         setChangedEvents(apiChanged as EventItem[]);
@@ -207,16 +205,6 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         if (newCount > 0) parts.push(`新增 ${newCount} 个事件`);
         if (changedCount > 0) parts.push(`变更 ${changedCount} 个事件`);
         setUpdateResult(parts.length > 1 ? parts.join("，") : parts[0]);
-        setEvents((prev) => {
-          const rest = prev.filter((e) => e.siteId !== siteId);
-          const merged = [...rest, ...allFromUpdate];
-          merged.sort((a, b) => {
-            const aT = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
-            const bT = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
-            return aT - bT;
-          });
-          return merged;
-        });
       } catch (err) {
         const msg =
           err instanceof Error ? err.message : String(err ?? "未知错误");
@@ -448,26 +436,10 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             onFollow={handleFollow}
             onUnfollow={handleUnfollow}
             pageSize={10}
+            highlightColumns={["createdAt", "endDate"]}
           />
         </div>
       )}
-
-      <div className="space-y-2">
-        {events.length > 0 && (
-          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
-            全部事件
-          </h2>
-        )}
-        <EventsTable
-          events={events}
-          sectionNameMap={sectionNameMap}
-          siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
-          followedIds={followedIds}
-          onFollow={handleFollow}
-          onUnfollow={handleUnfollow}
-          pageSize={10}
-        />
-      </div>
     </div>
   );
 }
