@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getAdapter } from "@/lib/adapters";
@@ -110,35 +111,25 @@ export async function POST(request: NextRequest) {
 
     const externalIds = new Set(adapterSections.map((s) => s.externalId));
 
-    await prisma.$transaction(
-      async (tx) => {
-        for (const sec of adapterSections) {
-          await tx.section.upsert({
-            where: {
-              siteId_externalId: { siteId, externalId: sec.externalId },
-            },
-            create: {
-              siteId,
-              externalId: sec.externalId,
-              name: sec.name,
-              urlOrSlug: sec.urlOrSlug ?? null,
-            },
-            update: {
-              name: sec.name,
-              urlOrSlug: sec.urlOrSlug ?? null,
-            },
-          });
-        }
+    if (adapterSections.length > 0) {
+      const values = adapterSections.map(
+        (sec) =>
+          Prisma.sql`(gen_random_uuid()::text, ${siteId}, ${sec.externalId}, ${sec.name}, ${sec.urlOrSlug ?? null}, true)`
+      );
+      await prisma.$executeRaw`
+        INSERT INTO "Section" ("id", "siteId", "externalId", "name", "urlOrSlug", "enabled")
+        VALUES ${Prisma.join(values)}
+        ON CONFLICT ("siteId", "externalId")
+        DO UPDATE SET "name" = EXCLUDED."name", "urlOrSlug" = EXCLUDED."urlOrSlug"
+      `;
+    }
 
-        await tx.section.deleteMany({
-          where: {
-            siteId,
-            ...(externalIds.size > 0 ? { externalId: { notIn: Array.from(externalIds) } } : {}),
-          },
-        });
+    await prisma.section.deleteMany({
+      where: {
+        siteId,
+        ...(externalIds.size > 0 ? { externalId: { notIn: Array.from(externalIds) } } : {}),
       },
-      { timeout: 30_000 }
-    );
+    });
 
     const sections = await prisma.section.findMany({
       where: { siteId },
