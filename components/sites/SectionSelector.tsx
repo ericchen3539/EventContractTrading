@@ -32,7 +32,9 @@ export function SectionSelector({ siteId }: SectionSelectorProps) {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/sections?siteId=${encodeURIComponent(siteId)}`);
+      const res = await fetch(`/api/sections?siteId=${encodeURIComponent(siteId)}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Failed to load sections");
@@ -60,13 +62,14 @@ export function SectionSelector({ siteId }: SectionSelectorProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteId }),
+        cache: "no-store",
       });
       const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) {
         setError(data?.error ?? `Sync failed (${res.status})`);
         return;
       }
-      setSections(Array.isArray(data) ? data : []);
+      await fetchSections();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
