@@ -180,6 +180,7 @@ async function getEventsAndMarkets(
         return aTs.localeCompare(bTs);
       });
       const primary = sortedByClose[0] ?? ev.markets?.[0];
+      const lastMarket = sortedByClose.length > 1 ? sortedByClose[sortedByClose.length - 1] : primary;
       const volume = primary?.volume ?? 0;
       const liquidityRaw = primary?.liquidity_dollars ?? primary?.liquidity;
       const liquidity =
@@ -200,14 +201,16 @@ async function getEventsAndMarkets(
       if (yesVal !== undefined) outcomes.Yes = yesVal;
       if (noVal !== undefined) outcomes.No = noVal;
 
-      const endDate = primary?.close_time ?? primary?.expiration_time ?? ev.strike_date;
-      /** First market's trading end time (close_time or expiration_time). */
+      /** First market's end = 最近交易结束时间 (soonest deadline). */
       const createdAt =
         primary?.close_time
           ? new Date(primary.close_time)
           : primary?.expiration_time
             ? new Date(primary.expiration_time)
             : undefined;
+      /** Last market's end = 结束日期 (event fully resolves). */
+      const endDate =
+        lastMarket?.close_time ?? lastMarket?.expiration_time ?? ev.strike_date;
       results.push({
         externalId: ev.event_ticker,
         sectionExternalId: category,
