@@ -85,86 +85,96 @@ async function fetchJson<T>(url: string): Promise<T> {
   }
 }
 
-/** Fetch all series in the politics category as sections. */
+/**
+ * Kalshi top-level categories matching site navigation.
+ * externalId = API category name for event filtering; name = display label.
+ */
+const KALSHI_SECTIONS: SectionInput[] = [
+  { externalId: "Sports", name: "Sports" },
+  { externalId: "Politics", name: "Politics" },
+  { externalId: "Entertainment", name: "Culture" },
+  { externalId: "Crypto", name: "Crypto" },
+  { externalId: "Climate and Weather", name: "Climate" },
+  { externalId: "Economics", name: "Economics" },
+  { externalId: "Mentions", name: "Mentions" },
+  { externalId: "Companies", name: "Companies" },
+  { externalId: "Financials", name: "Financials" },
+  { externalId: "Science and Technology", name: "Tech & Science" },
+  { externalId: "Elections", name: "Elections" },
+  { externalId: "World", name: "World" },
+  { externalId: "Health", name: "Health" },
+];
+
+/** Return top-level categories as sections (Trending, Sports, Politics, etc.). */
 async function getSections(_site: SiteInput): Promise<SectionInput[]> {
-  const url = `${KALSHI_API_BASE}/series?category=Politics`;
-  const data = await fetchJson<KalshiSeriesResponse>(url);
-
-  if (!data.series || !Array.isArray(data.series)) {
-    return [];
-  }
-
-  return data.series.map((s) => ({
-    externalId: s.ticker,
-    name: s.title || s.ticker,
-    urlOrSlug: s.contract_url ?? undefined,
-  }));
+  return KALSHI_SECTIONS;
 }
 
-/** Fetch events for given series tickers; maps to EventMarketInput. */
+/** Fetch events for given categories (sectionIds = API category names); filter by event.category. */
 async function getEventsAndMarkets(
   _site: SiteInput,
-  sectionIds: string[]
+  categoryIds: string[]
 ): Promise<EventMarketInput[]> {
+  const categorySet = new Set(categoryIds);
   const results: EventMarketInput[] = [];
 
-  for (const seriesTicker of sectionIds) {
-    let cursor: string | undefined;
-    do {
-      const params = new URLSearchParams({
-        series_ticker: seriesTicker,
-        status: "open",
-        with_nested_markets: "true",
-        limit: "200",
+  let cursor: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      status: "open",
+      with_nested_markets: "true",
+      limit: "200",
+    });
+    if (cursor) params.set("cursor", cursor);
+
+    const url = `${KALSHI_API_BASE}/events?${params}`;
+    const data = await fetchJson<KalshiEventsResponse>(url);
+
+    if (!data.events || !Array.isArray(data.events)) {
+      break;
+    }
+
+    for (const ev of data.events) {
+      const category = ev.category;
+      if (!category || !categorySet.has(category)) continue;
+
+      const primary = ev.markets?.[0];
+      const volume = primary?.volume ?? 0;
+      const liquidityRaw = primary?.liquidity_dollars ?? primary?.liquidity;
+      const liquidity =
+        typeof liquidityRaw === "string"
+          ? parseFloat(liquidityRaw)
+          : typeof liquidityRaw === "number"
+            ? liquidityRaw / 100
+            : undefined;
+
+      const yesPrice =
+        primary?.last_price_dollars ??
+        primary?.yes_ask_dollars ??
+        primary?.yes_bid_dollars;
+      const yesVal = yesPrice ? parseFloat(yesPrice) : undefined;
+      const noVal = yesVal !== undefined ? 1 - yesVal : undefined;
+
+      const outcomes: Record<string, number> = {};
+      if (yesVal !== undefined) outcomes.Yes = yesVal;
+      if (noVal !== undefined) outcomes.No = noVal;
+
+      const endDate = primary?.close_time ?? primary?.expiration_time ?? ev.strike_date;
+      results.push({
+        externalId: ev.event_ticker,
+        sectionExternalId: category,
+        title: ev.title,
+        description: ev.sub_title ?? undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        volume: typeof volume === "number" ? volume : undefined,
+        liquidity: typeof liquidity === "number" ? liquidity : undefined,
+        outcomes: Object.keys(outcomes).length ? outcomes : undefined,
+        raw: { event: ev, market: primary } as Record<string, unknown>,
       });
-      if (cursor) params.set("cursor", cursor);
+    }
 
-      const url = `${KALSHI_API_BASE}/events?${params}`;
-      const data = await fetchJson<KalshiEventsResponse>(url);
-
-      if (!data.events || !Array.isArray(data.events)) {
-        break;
-      }
-
-      for (const ev of data.events) {
-        const primary = ev.markets?.[0];
-        const volume = primary?.volume ?? 0;
-        const liquidityRaw = primary?.liquidity_dollars ?? primary?.liquidity;
-        const liquidity =
-          typeof liquidityRaw === "string"
-            ? parseFloat(liquidityRaw)
-            : typeof liquidityRaw === "number"
-              ? liquidityRaw / 100
-              : undefined;
-
-        const yesPrice =
-          primary?.last_price_dollars ??
-          primary?.yes_ask_dollars ??
-          primary?.yes_bid_dollars;
-        const yesVal = yesPrice ? parseFloat(yesPrice) : undefined;
-        const noVal = yesVal !== undefined ? 1 - yesVal : undefined;
-
-        const outcomes: Record<string, number> = {};
-        if (yesVal !== undefined) outcomes.Yes = yesVal;
-        if (noVal !== undefined) outcomes.No = noVal;
-
-        const endDate = primary?.close_time ?? primary?.expiration_time ?? ev.strike_date;
-        results.push({
-          externalId: ev.event_ticker,
-          sectionExternalId: seriesTicker,
-          title: ev.title,
-          description: ev.sub_title ?? undefined,
-          endDate: endDate ? new Date(endDate) : undefined,
-          volume: typeof volume === "number" ? volume : undefined,
-          liquidity: typeof liquidity === "number" ? liquidity : undefined,
-          outcomes: Object.keys(outcomes).length ? outcomes : undefined,
-          raw: { event: ev, market: primary } as Record<string, unknown>,
-        });
-      }
-
-      cursor = data.cursor || undefined;
-    } while (cursor);
-  }
+    cursor = data.cursor || undefined;
+  } while (cursor);
 
   return results;
 }
