@@ -61,29 +61,58 @@ interface KalshiSeriesResponse {
 }
 
 const FETCH_TIMEOUT_MS = 15_000;
+/** Delay between paginated requests to avoid 429 (Basic tier ~20 req/s). */
+const REQUEST_DELAY_MS = 80;
+const MAX_RETRIES = 3;
+const RETRY_BASE_MS = 1000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-  try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-      cache: "no-store", // Always fetch fresh data; revalidate can cause stale/weird behavior in Route Handlers
-    });
-    if (!res.ok) {
-      throw new Error(`Kalshi API error: ${res.status} ${res.statusText}`);
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      clearTimeout(timeoutId);
+
+      if (res.status === 429) {
+        const retryAfter = res.headers.get("Retry-After");
+        const waitMs = retryAfter
+          ? Math.min(parseInt(retryAfter, 10) * 1000, 30_000)
+          : RETRY_BASE_MS * Math.pow(2, attempt);
+        if (attempt < MAX_RETRIES) {
+          await sleep(waitMs);
+          continue;
+        }
+      }
+      if (!res.ok) {
+        throw new Error(`Kalshi API error: ${res.status} ${res.statusText}`);
+      }
+      return res.json() as Promise<T>;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        lastErr = new Error("Kalshi API request timed out");
+      } else {
+        lastErr = err instanceof Error ? err : new Error(String(err));
+      }
+      if (attempt < MAX_RETRIES) {
+        await sleep(RETRY_BASE_MS * Math.pow(2, attempt));
+        continue;
+      }
+      throw lastErr;
     }
-    return res.json() as Promise<T>;
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("Kalshi API request timed out");
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
   }
+  throw lastErr ?? new Error("Kalshi API request failed");
 }
 
 /**
@@ -120,7 +149,11 @@ async function getEventsAndMarkets(
   const results: EventMarketInput[] = [];
 
   let cursor: string | undefined;
+  let isFirstPage = true;
   do {
+    if (!isFirstPage) await sleep(REQUEST_DELAY_MS);
+    isFirstPage = false;
+
     const params = new URLSearchParams({
       status: "open",
       with_nested_markets: "true",
