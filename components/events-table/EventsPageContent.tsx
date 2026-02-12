@@ -25,6 +25,17 @@ interface EventsPageContentProps {
   sites: SiteItem[];
 }
 
+/** Map API error strings to user-facing semantic descriptions. */
+function toSemanticError(err: string): string {
+  if (err.includes("Unauthorized")) return "未登录或会话已过期，请重新登录";
+  if (err.includes("Site not found")) return "站点不存在或无权访问";
+  if (err.includes("Unknown adapter")) return "不支持的平台类型";
+  if (err.includes("Failed to fetch events") || err.includes("Adapter fetch failed"))
+    return err.replace(/^.*?:\s*/, "从平台拉取事件失败：");
+  if (err.includes("Internal server error")) return "服务器内部错误";
+  return err;
+}
+
 /**
  * Events page content: multi-site/section selectors, per-site update, and table.
  */
@@ -46,6 +57,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   >({});
   const [updatingSiteId, setUpdatingSiteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [updateResult, setUpdateResult] = useState<string | null>(null);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
 
   const fetchFollowedIds = useCallback(async () => {
@@ -141,6 +153,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           : enabledIds;
 
       setError(null);
+      setUpdateResult(null);
       setUpdatingSiteId(siteId);
       try {
         const url = new URL(
@@ -151,13 +164,14 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           url.searchParams.set("sectionIds", idsToUse.join(","));
         }
         const res = await fetch(url.toString(), { credentials: "include" });
-        const statusHint = `[HTTP ${res.status}]`;
         let data: unknown;
         try {
           data = await res.json();
         } catch {
           const text = await res.text().catch(() => "");
-          setError(text ? `${statusHint} ${text.slice(0, 150)}` : statusHint);
+          setError(
+            `更新失败！${toSemanticError(text || `HTTP ${res.status}`)}`
+          );
           return;
         }
         if (!res.ok) {
@@ -167,13 +181,11 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
               : null;
           const errStr =
             typeof obj?.error === "string"
-              ? obj.error
+              ? (obj.error as string)
               : typeof obj?.message === "string"
-                ? obj.message
-                : null;
-          setError(
-            errStr ? `${statusHint} ${errStr}` : `${statusHint} 获取事件失败`
-          );
+                ? (obj.message as string)
+                : `HTTP ${res.status}`;
+          setError(`更新失败！${toSemanticError(errStr)}`);
           return;
         }
         const payload =
@@ -189,6 +201,12 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
 
         setNewEvents(apiNew as EventItem[]);
         setChangedEvents(apiChanged as EventItem[]);
+        const newCount = apiNew.length;
+        const changedCount = apiChanged.length;
+        const parts: string[] = ["更新成功"];
+        if (newCount > 0) parts.push(`新增 ${newCount} 个事件`);
+        if (changedCount > 0) parts.push(`变更 ${changedCount} 个事件`);
+        setUpdateResult(parts.length > 1 ? parts.join("，") : parts[0]);
         setEvents((prev) => {
           const rest = prev.filter((e) => e.siteId !== siteId);
           const merged = [...rest, ...allFromUpdate];
@@ -202,7 +220,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
       } catch (err) {
         const msg =
           err instanceof Error ? err.message : String(err ?? "未知错误");
-        setError(`请求失败: ${msg}`);
+        setError(`更新失败！${toSemanticError(msg)}`);
       } finally {
         setUpdatingSiteId(null);
       }
@@ -388,6 +406,11 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
 
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
+        {updateResult && !error && (
+          <p className="text-sm text-green-600 dark:text-green-400">
+            {updateResult}
+          </p>
         )}
       </div>
 

@@ -20,29 +20,20 @@ async function getSiteForUser(siteId: string, userId: string) {
   });
 }
 
-/** Compare adapter event with DB record. Ignores volume, liquidity, fetchedAt, raw. */
+/** Compare only 最近交易时间 (createdAt) and 结束日期 (endDate). All other field changes ignored. */
 function hasSemanticChanges(
   ev: EventMarketInput,
   existing: {
-    title: string;
-    description: string | null;
     createdAt: Date | null;
     endDate: Date | null;
-    outcomes: unknown;
   }
 ): boolean {
-  if (ev.title !== existing.title) return true;
-  const evDesc = ev.description ?? null;
-  if (evDesc !== existing.description) return true;
   const evCreated = ev.createdAt ? ev.createdAt.getTime() : null;
   const exCreated = existing.createdAt ? existing.createdAt.getTime() : null;
   if (evCreated !== exCreated) return true;
   const evEnd = ev.endDate ? ev.endDate.getTime() : null;
   const exEnd = existing.endDate ? existing.endDate.getTime() : null;
   if (evEnd !== exEnd) return true;
-  const evOut = JSON.stringify(ev.outcomes ?? null);
-  const exOut = JSON.stringify(existing.outcomes ?? null);
-  if (evOut !== exOut) return true;
   return false;
 }
 
