@@ -284,9 +284,22 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-        事件市场
-      </h1>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          事件市场
+        </h1>
+        {(error || updateResult) && (
+          <p
+            className={`rounded-lg px-3 py-2 text-sm font-medium ${
+              error
+                ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                : "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+            }`}
+          >
+            {error ?? updateResult}
+          </p>
+        )}
+      </div>
 
       <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="space-y-4">
@@ -403,15 +416,6 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             </div>
           )}
         </div>
-
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
-        {updateResult && !error && (
-          <p className="text-sm text-green-600 dark:text-green-400">
-            {updateResult}
-          </p>
-        )}
       </div>
 
       {newEvents.length > 0 && (
