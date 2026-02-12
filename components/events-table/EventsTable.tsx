@@ -219,8 +219,8 @@ export function EventsTable({
   );
 
   const selectAllLimited = useCallback(
-    (table: { getFilteredRowModel: () => { rows: { original: EventItem }[] } }) => {
-      const rows = table.getFilteredRowModel().rows;
+    (table: { getFilteredRowModel?: () => { rows: { original: EventItem }[] } }) => {
+      const rows = table?.getFilteredRowModel?.()?.rows ?? [];
       const ids = rows.slice(0, maxSelected).map((r) => (r.original as EventItem).id);
       const sel: RowSelectionState = {};
       for (const id of ids) sel[id] = true;
@@ -247,7 +247,9 @@ export function EventsTable({
               id: "select",
               accessorKey: "id",
               header: enableSelectAll
-                ? ({ table }) => (
+                ? ({ table }) => {
+                    if (!table) return <span className="text-xs text-slate-500">选择</span>;
+                    return (
                     <label
                       className="flex cursor-pointer items-center gap-1"
                       onClick={(e) => e.stopPropagation()}
@@ -255,8 +257,8 @@ export function EventsTable({
                       <input
                         type="checkbox"
                         checked={
-                          table.getIsAllRowsSelected() ||
-                          table.getIsSomeRowsSelected()
+                          table.getIsAllRowsSelected?.() ||
+                          table.getIsSomeRowsSelected?.()
                         }
                         onChange={() => selectAllLimited(table)}
                         className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
@@ -264,24 +266,29 @@ export function EventsTable({
                       />
                       <span className="text-xs text-slate-500">全选</span>
                     </label>
-                  )
+                    );
+                  }
                 : "选择",
-              cell: ({ row, table }) => (
+              cell: ({ row, table }) => {
+                const toggleHandler = row.getToggleSelectedHandler?.();
+                return (
                 <input
                   type="checkbox"
-                  checked={row.getIsSelected()}
+                  checked={row.getIsSelected?.() ?? false}
                   onChange={(e) => {
-                    const adding = !row.getIsSelected();
-                    const currentCount = table.getSelectedRowModel().rows.length;
+                    if (!toggleHandler) return;
+                    const adding = !row.getIsSelected?.();
+                    const currentCount = table?.getSelectedRowModel?.()?.rows?.length ?? 0;
                     if (adding && currentCount >= maxSelected) {
                       setBatchOverflowMsg(`最多选择 ${maxSelected} 条`);
                       return;
                     }
-                    row.getToggleSelectedHandler()(e);
+                    toggleHandler(e);
                   }}
                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                 />
-              ),
+              );
+              },
               enableSorting: false,
             } as ColumnDef<EventItem>,
           ]
@@ -401,23 +408,10 @@ export function EventsTable({
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  if (events.length === 0) {
-    const main = emptyStateMessage ?? "暂无事件数据";
-    const sub =
-      emptyStateSubMessage ??
-      (emptyStateMessage == null ? "请选择站点并点击「更新」拉取事件。" : undefined);
-    return (
-      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
-        <p className="text-slate-600 dark:text-slate-400">{main}</p>
-        {sub != null && (
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">{sub}</p>
-        )}
-      </div>
-    );
-  }
-
-  const selectedRows = selectable ? table.getSelectedRowModel().rows : [];
-  const selectedIds = selectedRows.map((r) => r.original.id);
+  const selectedRows = selectable ? table.getSelectedRowModel?.()?.rows ?? [] : [];
+  const selectedIds = selectedRows
+    .map((r) => (r.original as EventItem)?.id)
+    .filter((id): id is string => typeof id === "string");
   const showBatchBar =
     selectable &&
     selectedIds.length > 0 &&
@@ -442,6 +436,21 @@ export function EventsTable({
     onBatchAttentionChange,
     clearSelection,
   ]);
+
+  if (events.length === 0) {
+    const main = emptyStateMessage ?? "暂无事件数据";
+    const sub =
+      emptyStateSubMessage ??
+      (emptyStateMessage == null ? "请选择站点并点击「更新」拉取事件。" : undefined);
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+        <p className="text-slate-600 dark:text-slate-400">{main}</p>
+        {sub != null && (
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">{sub}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
