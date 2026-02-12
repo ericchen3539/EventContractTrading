@@ -331,7 +331,7 @@ export function MePageContent({ sites }: MePageContentProps) {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-        我的
+        用户事件
       </h1>
 
       <div className="space-y-4">
@@ -446,7 +446,7 @@ export function MePageContent({ sites }: MePageContentProps) {
                 href="/events"
                 className="font-medium text-blue-600 underline hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
               >
-                事件市场
+                事件更新
               </Link>{" "}
               或在下方浏览并设置关注度
             </p>
@@ -622,12 +622,12 @@ export function MePageContent({ sites }: MePageContentProps) {
               ? "请选择站点和板块后点击加载"
               : loadingCached
                 ? "加载中…"
-                : "该站点/板块暂无缓存事件，请先在事件市场更新"
+                : "该站点/板块暂无缓存事件，请先在事件更新页面更新"
           }
           emptyStateSubMessage={
             !selectedSiteId || loadingCached
               ? undefined
-              : "请先在事件市场点击「更新」拉取事件。"
+              : "请先在事件更新页面点击「更新」拉取事件。"
           }
         />
       </div>

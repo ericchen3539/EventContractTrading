@@ -40,7 +40,7 @@ export default async function MePage() {
     return (
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          我的
+          用户事件
         </h1>
         <div className="mt-6 rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
           <p className="text-slate-600 dark:text-slate-400">暂无站点</p>

@@ -262,7 +262,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          事件市场
+          事件更新
         </h1>
         {(error || updateResult) && (
           <p
