@@ -61,15 +61,15 @@ export function SectionSelector({ siteId }: SectionSelectorProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteId }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) {
-        setError(data.error ?? "Sync failed");
+        setError(data?.error ?? `Sync failed (${res.status})`);
         return;
       }
       setSections(Array.isArray(data) ? data : []);
       router.refresh();
-    } catch {
-      setError("Sync failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
     } finally {
       setSyncing(false);
     }

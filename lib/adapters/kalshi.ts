@@ -59,15 +59,30 @@ interface KalshiSeriesResponse {
   series: KalshiSeries[];
 }
 
+const FETCH_TIMEOUT_MS = 15_000;
+
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, {
-    headers: { Accept: "application/json" },
-    next: { revalidate: 60 },
-  });
-  if (!res.ok) {
-    throw new Error(`Kalshi API error: ${res.status} ${res.statusText}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) {
+      throw new Error(`Kalshi API error: ${res.status} ${res.statusText}`);
+    }
+    return res.json() as Promise<T>;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Kalshi API request timed out");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return res.json() as Promise<T>;
 }
 
 /** Fetch all series in the politics category as sections. */
