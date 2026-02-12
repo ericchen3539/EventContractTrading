@@ -161,15 +161,20 @@ export function EventsTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const paginationEnabled = pageSize != null && pageSize > 0;
+  const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
+    pageSize: effectivePageSize,
   });
   useEffect(() => {
     if (paginationEnabled) {
-      setPagination((p) => ({ ...p, pageIndex: 0 }));
+      setPagination((p) => ({
+        ...p,
+        pageIndex: 0,
+        pageSize: effectivePageSize,
+      }));
     }
-  }, [events, paginationEnabled]);
+  }, [events, paginationEnabled, effectivePageSize]);
 
   const columns = useMemo<ColumnDef<EventItem>[]>(
     () => [
@@ -258,6 +263,8 @@ export function EventsTable({
   const table = useReactTable({
     data: events,
     columns,
+    getPaginationRowModel: paginationEnabled ? getPaginationRowModel() : undefined,
+    manualPagination: !paginationEnabled,
     state: {
       sorting,
       columnFilters,
@@ -271,10 +278,6 @@ export function EventsTable({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    ...(paginationEnabled && {
-      getPaginationRowModel: getPaginationRowModel(),
-      manualPagination: false,
-    }),
   });
 
   if (events.length === 0) {
