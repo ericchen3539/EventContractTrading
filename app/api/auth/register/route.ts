@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await prisma.user.findUnique({
+    const existing = await prisma.user.findFirst({
       where: { email: trimEmail },
     });
     if (existing) {
@@ -59,9 +59,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[auth/register]", err);
-    return NextResponse.json(
-      { error: "Registration failed" },
-      { status: 500 }
-    );
+    const message =
+      process.env.NODE_ENV === "development" && err instanceof Error
+        ? err.message
+        : "Registration failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
