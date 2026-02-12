@@ -24,6 +24,8 @@ export interface EventMarketInput {
   sectionExternalId: string;
   title: string;
   description?: string;
+  /** Platform-side creation time (e.g. primary market created_time from Kalshi). */
+  createdAt?: Date;
   endDate?: Date;
   volume?: number;
   liquidity?: number;

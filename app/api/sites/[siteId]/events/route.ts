@@ -25,6 +25,7 @@ function toPublicEvent(event: {
   externalId: string;
   title: string;
   description: string | null;
+  createdAt: Date | null;
   endDate: Date | null;
   volume: number | null;
   liquidity: number | null;
@@ -38,6 +39,7 @@ function toPublicEvent(event: {
     externalId: event.externalId,
     title: event.title,
     description: event.description ?? undefined,
+    createdAt: event.createdAt?.toISOString() ?? undefined,
     endDate: event.endDate?.toISOString() ?? undefined,
     volume: event.volume ?? undefined,
     liquidity: event.liquidity ?? undefined,
@@ -153,6 +155,7 @@ async function handleGet(
           externalId: ev.externalId,
           title: ev.title,
           description: ev.description ?? null,
+          createdAt: ev.createdAt ?? null,
           endDate: ev.endDate ?? null,
           volume: ev.volume ?? null,
           liquidity: ev.liquidity ?? null,
@@ -162,6 +165,7 @@ async function handleGet(
         update: {
           title: ev.title,
           description: ev.description ?? null,
+          createdAt: ev.createdAt ?? null,
           endDate: ev.endDate ?? null,
           volume: ev.volume ?? null,
           liquidity: ev.liquidity ?? null,
