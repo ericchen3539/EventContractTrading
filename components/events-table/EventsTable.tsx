@@ -11,8 +11,10 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type PaginationState,
+  type RowSelectionState,
 } from "@tanstack/react-table";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { MAX_SELECTED_EVENTS } from "@/lib/constants";
 
 /** Event as returned by GET /api/sites/[siteId]/events or GET /api/me/followed-events */
 export type EventItem = {
@@ -49,6 +51,16 @@ interface EventsTableProps {
   pageSize?: number;
   /** Column accessor keys to render in red (e.g. changed attributes). */
   highlightColumns?: string[];
+  /** Enable row selection for batch operations */
+  selectable?: boolean;
+  /** Show select-all checkbox in header */
+  enableSelectAll?: boolean;
+  /** Max selected rows (default 50). Enforced on select-all and batch action. */
+  maxSelected?: number;
+  /** Callback when selection changes */
+  onSelectionChange?: (ids: Set<string>) => void;
+  /** Batch set attention level for selected events */
+  onBatchAttentionChange?: (eventIds: string[], level: number) => void;
 }
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -150,6 +162,11 @@ export function EventsTable({
   emptyStateSubMessage,
   pageSize,
   highlightColumns,
+  selectable = false,
+  enableSelectAll = false,
+  maxSelected = MAX_SELECTED_EVENTS,
+  onSelectionChange,
+  onBatchAttentionChange,
 }: EventsTableProps) {
   const highlightSet = useMemo(
     () => new Set(highlightColumns ?? []),
@@ -160,6 +177,9 @@ export function EventsTable({
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [batchLevel, setBatchLevel] = useState(1);
+  const [batchOverflowMsg, setBatchOverflowMsg] = useState<string | null>(null);
   const paginationEnabled = pageSize != null && pageSize > 0;
   const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
   const [pagination, setPagination] = useState<PaginationState>({
@@ -176,8 +196,96 @@ export function EventsTable({
     }
   }, [events, paginationEnabled, effectivePageSize]);
 
+  const handleRowSelectionChange = useCallback(
+    (updaterOrValue: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
+      setRowSelection((prev) => {
+        const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
+        const ids = Object.keys(next).filter((k) => next[k]);
+        if (ids.length > maxSelected) {
+          const trimmed: RowSelectionState = {};
+          for (let i = 0; i < maxSelected; i++) {
+            trimmed[ids[i]] = true;
+          }
+          setBatchOverflowMsg(`最多选择 ${maxSelected} 条`);
+          onSelectionChange?.(new Set(ids.slice(0, maxSelected)));
+          return trimmed;
+        }
+        setBatchOverflowMsg(null);
+        onSelectionChange?.(new Set(ids));
+        return next;
+      });
+    },
+    [maxSelected, onSelectionChange]
+  );
+
+  const selectAllLimited = useCallback(
+    (table: { getFilteredRowModel: () => { rows: { original: EventItem }[] } }) => {
+      const rows = table.getFilteredRowModel().rows;
+      const ids = rows.slice(0, maxSelected).map((r) => (r.original as EventItem).id);
+      const sel: RowSelectionState = {};
+      for (const id of ids) sel[id] = true;
+      setRowSelection(sel);
+      setBatchOverflowMsg(
+        rows.length > maxSelected ? `已选中前 ${maxSelected} 条，超出部分未选` : null
+      );
+      onSelectionChange?.(new Set(ids));
+    },
+    [maxSelected, onSelectionChange]
+  );
+
+  const clearSelection = useCallback(() => {
+    setRowSelection({});
+    setBatchOverflowMsg(null);
+    onSelectionChange?.(new Set());
+  }, [onSelectionChange]);
+
   const columns = useMemo<ColumnDef<EventItem>[]>(
     () => [
+      ...(selectable
+        ? [
+            {
+              id: "select",
+              accessorKey: "id",
+              header: enableSelectAll
+                ? ({ table }) => (
+                    <label
+                      className="flex cursor-pointer items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={
+                          table.getIsAllRowsSelected() ||
+                          table.getIsSomeRowsSelected()
+                        }
+                        onChange={() => selectAllLimited(table)}
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                        aria-label="全选"
+                      />
+                      <span className="text-xs text-slate-500">全选</span>
+                    </label>
+                  )
+                : "选择",
+              cell: ({ row, table }) => (
+                <input
+                  type="checkbox"
+                  checked={row.getIsSelected()}
+                  onChange={(e) => {
+                    const adding = !row.getIsSelected();
+                    const currentCount = table.getSelectedRowModel().rows.length;
+                    if (adding && currentCount >= maxSelected) {
+                      setBatchOverflowMsg(`最多选择 ${maxSelected} 条`);
+                      return;
+                    }
+                    row.getToggleSelectedHandler()(e);
+                  }}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                />
+              ),
+              enableSorting: false,
+            } as ColumnDef<EventItem>,
+          ]
+        : []),
       ...(siteNameMap
         ? [
             {
@@ -257,23 +365,36 @@ export function EventsTable({
           ]
         : []),
     ],
-    [sectionNameMap, siteNameMap, attentionMap, onAttentionChange]
+    [
+      sectionNameMap,
+      siteNameMap,
+      attentionMap,
+      onAttentionChange,
+      selectable,
+      enableSelectAll,
+      maxSelected,
+      selectAllLimited,
+    ]
   );
 
   const table = useReactTable({
     data: events,
     columns,
+    getRowId: (row) => (row as EventItem).id,
     getPaginationRowModel: paginationEnabled ? getPaginationRowModel() : undefined,
     manualPagination: !paginationEnabled,
+    enableRowSelection: selectable,
     state: {
       sorting,
       columnFilters,
       globalFilter,
+      rowSelection: selectable ? rowSelection : undefined,
       ...(paginationEnabled && { pagination }),
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: selectable ? handleRowSelectionChange : undefined,
     ...(paginationEnabled && { onPaginationChange: setPagination }),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -295,9 +416,36 @@ export function EventsTable({
     );
   }
 
+  const selectedRows = selectable ? table.getSelectedRowModel().rows : [];
+  const selectedIds = selectedRows.map((r) => r.original.id);
+  const showBatchBar =
+    selectable &&
+    selectedIds.length > 0 &&
+    onBatchAttentionChange != null;
+
+  const handleBatchApply = useCallback(async () => {
+    if (selectedIds.length > maxSelected) {
+      setBatchOverflowMsg(`最多选择 ${maxSelected} 条，请减少选择后重试`);
+      return;
+    }
+    const handler = onBatchAttentionChange ?? (() => {});
+    try {
+      await Promise.resolve(handler(selectedIds, batchLevel));
+      clearSelection();
+    } catch {
+      // Parent handles error display
+    }
+  }, [
+    selectedIds,
+    batchLevel,
+    maxSelected,
+    onBatchAttentionChange,
+    clearSelection,
+  ]);
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <input
           type="text"
           placeholder="搜索标题..."
@@ -305,6 +453,49 @@ export function EventsTable({
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
+        {showBatchBar && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
+            <span className="text-sm text-slate-700 dark:text-slate-300">
+              已选 {selectedIds.length} 项
+            </span>
+            {batchOverflowMsg && (
+              <span className="text-sm text-amber-600 dark:text-amber-400">
+                {batchOverflowMsg}
+              </span>
+            )}
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-slate-600 dark:text-slate-400">
+                关注度
+              </span>
+              <select
+                value={batchLevel}
+                onChange={(e) => setBatchLevel(parseInt(e.target.value, 10))}
+                className="rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              >
+                {[0, 1, 2, 3].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={handleBatchApply}
+              disabled={selectedIds.length > maxSelected}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+            >
+              批量设置
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-700 dark:text-slate-300"
+            >
+              取消选择
+            </button>
+          </div>
+        )}
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">

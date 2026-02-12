@@ -180,6 +180,34 @@ export function MePageContent({ sites }: MePageContentProps) {
     [fetchFollowedEvents]
   );
 
+  const handleBatchAttentionChange = useCallback(
+    async (eventIds: string[], level: number) => {
+      try {
+        const res = await fetch("/api/events/attention/batch", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updates: eventIds.map((eventId) => ({ eventId, attentionLevel: level })),
+          }),
+        });
+        if (res.ok) {
+          const updates: Record<string, number> = {};
+          for (const id of eventIds) updates[id] = level;
+          setBrowseAttentionMap((prev) => ({ ...prev, ...updates }));
+          setFollowedEvents((prev) =>
+            prev.map((e) =>
+              eventIds.includes(e.id) ? { ...e, attentionLevel: level } : e
+            )
+          );
+          fetchFollowedEvents();
+        }
+      } catch {
+        // ignore
+      }
+    },
+    [fetchFollowedEvents]
+  );
+
   const followedAttentionMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const e of followedEvents) {
@@ -462,7 +490,10 @@ export function MePageContent({ sites }: MePageContentProps) {
             }
             attentionMap={followedAttentionMap}
             onAttentionChange={handleAttentionChange}
+            onBatchAttentionChange={handleBatchAttentionChange}
             pageSize={10}
+            selectable
+            enableSelectAll
           />
         )}
       </div>
@@ -616,7 +647,10 @@ export function MePageContent({ sites }: MePageContentProps) {
           siteNameMap={undefined}
           attentionMap={browseAttentionMap}
           onAttentionChange={handleAttentionChange}
+          onBatchAttentionChange={handleBatchAttentionChange}
           pageSize={10}
+          selectable
+          enableSelectAll
           emptyStateMessage={
             !selectedSiteId
               ? "请选择站点和板块后点击加载"

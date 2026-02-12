@@ -93,6 +93,31 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
     []
   );
 
+  const handleBatchAttentionChange = useCallback(
+    async (eventIds: string[], level: number) => {
+      try {
+        const res = await fetch("/api/events/attention/batch", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updates: eventIds.map((eventId) => ({
+              eventId,
+              attentionLevel: level,
+            })),
+          }),
+        });
+        if (res.ok) {
+          const updates: Record<string, number> = {};
+          for (const id of eventIds) updates[id] = level;
+          setAttentionMap((prev) => ({ ...prev, ...updates }));
+        }
+      } catch {
+        // ignore
+      }
+    },
+    []
+  );
+
   const fetchSectionsForSite = useCallback(
     async (siteId: string) => {
       setLoadingSectionsBySite((prev) => ({ ...prev, [siteId]: true }));
@@ -405,7 +430,10 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
             attentionMap={attentionMap}
             onAttentionChange={handleAttentionChange}
+            onBatchAttentionChange={handleBatchAttentionChange}
             pageSize={10}
+            selectable
+            enableSelectAll
           />
         </div>
       )}
@@ -421,8 +449,11 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
             attentionMap={attentionMap}
             onAttentionChange={handleAttentionChange}
+            onBatchAttentionChange={handleBatchAttentionChange}
             pageSize={10}
             highlightColumns={["createdAt", "endDate"]}
+            selectable
+            enableSelectAll
           />
         </div>
       )}
