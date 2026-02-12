@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     if (adapterSections.length > 0) {
       const values = adapterSections.map(
         (sec) =>
-          Prisma.sql`(gen_random_uuid()::text, ${siteId}, ${sec.externalId}, ${sec.name}, ${sec.urlOrSlug ?? null}, true)`
+          Prisma.sql`(gen_random_uuid()::text, ${siteId}, ${sec.externalId}, ${sec.name}, ${sec.urlOrSlug ?? null}, false)`
       );
       await prisma.$executeRaw`
         INSERT INTO "Section" ("id", "siteId", "externalId", "name", "urlOrSlug", "enabled")
