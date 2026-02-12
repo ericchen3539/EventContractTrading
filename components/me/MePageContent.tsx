@@ -407,6 +407,7 @@ export function MePageContent({ sites }: MePageContentProps) {
             }
             attentionMap={followedAttentionMap}
             onAttentionChange={handleAttentionChange}
+            pageSize={10}
           />
         )}
       </div>
@@ -560,6 +561,7 @@ export function MePageContent({ sites }: MePageContentProps) {
           siteNameMap={undefined}
           attentionMap={browseAttentionMap}
           onAttentionChange={handleAttentionChange}
+          pageSize={10}
           emptyStateMessage={
             !selectedSiteId
               ? "请选择站点和板块后点击加载"
