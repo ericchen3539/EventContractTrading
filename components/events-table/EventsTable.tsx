@@ -118,7 +118,7 @@ export function EventsTable({
         accessorKey: "title",
         header: "标题",
         cell: ({ row }) => (
-          <div className="max-w-[320px] truncate" title={row.original.title}>
+          <div className="max-w-[320px] break-words whitespace-normal" title={row.original.title}>
             {row.original.title}
           </div>
         ),
