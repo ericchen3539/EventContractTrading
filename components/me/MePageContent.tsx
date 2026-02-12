@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   EventsTable,
@@ -9,8 +9,10 @@ import {
 import type { SiteItem, SectionItem } from "@/components/events-table/EventsPageContent";
 
 const ATTENTION_FILTER_STORAGE_KEY = "me-page-attention-filter";
+const BROWSE_PREFS_STORAGE_KEY = "me-page-browse-prefs";
 
 type AttentionFilterPreset = "0" | "1" | "2" | "3" | "custom";
+type DaysFilterPreset = "3" | "7" | "30" | "all" | "custom";
 
 function loadAttentionFilterFromStorage(): {
   preset: AttentionFilterPreset;
@@ -50,6 +52,49 @@ function saveAttentionFilterToStorage(
   }
 }
 
+interface BrowsePrefs {
+  siteId?: string;
+  daysPreset?: DaysFilterPreset;
+  daysCustom?: number;
+  sectionIds?: string[];
+}
+
+function loadBrowsePrefsFromStorage(siteIds: string[]): BrowsePrefs {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(BROWSE_PREFS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as BrowsePrefs;
+    const siteId =
+      parsed.siteId && siteIds.includes(parsed.siteId) ? parsed.siteId : undefined;
+    const daysPreset = ["3", "7", "30", "all", "custom"].includes(
+      parsed.daysPreset ?? ""
+    )
+      ? (parsed.daysPreset as DaysFilterPreset)
+      : undefined;
+    const daysCustom =
+      typeof parsed.daysCustom === "number" &&
+      !Number.isNaN(parsed.daysCustom) &&
+      parsed.daysCustom >= 1
+        ? parsed.daysCustom
+        : undefined;
+    const sectionIds = Array.isArray(parsed.sectionIds)
+      ? parsed.sectionIds.filter((id): id is string => typeof id === "string")
+      : undefined;
+    return { siteId, daysPreset, daysCustom, sectionIds };
+  } catch {
+    return {};
+  }
+}
+
+function saveBrowsePrefsToStorage(prefs: BrowsePrefs) {
+  try {
+    localStorage.setItem(BROWSE_PREFS_STORAGE_KEY, JSON.stringify(prefs));
+  } catch {
+    // ignore
+  }
+}
+
 /** Event from GET /api/me/followed-events (includes siteName, sectionName, attentionLevel). */
 type FollowedEventItem = EventItem & {
   siteName?: string;
@@ -82,6 +127,7 @@ export function MePageContent({ sites }: MePageContentProps) {
       ? attentionFilterCustom
       : parseInt(attentionFilterPreset, 10);
 
+  const siteIds = useMemo(() => sites.map((s) => s.id), [sites]);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [sectionIdsBySite, setSectionIdsBySite] = useState<
     Record<string, Set<string>>
@@ -96,11 +142,29 @@ export function MePageContent({ sites }: MePageContentProps) {
   const [browseAttentionMap, setBrowseAttentionMap] = useState<
     Record<string, number>
   >({});
+  const shouldAutoLoadBrowse = useRef(false);
 
   const [daysFilterPreset, setDaysFilterPreset] = useState<
-    "3" | "7" | "30" | "all" | "custom"
+    DaysFilterPreset
   >("3");
   const [daysFilterCustom, setDaysFilterCustom] = useState(1);
+
+  /* Restore browse prefs from storage on mount */
+  useEffect(() => {
+    const prefs = loadBrowsePrefsFromStorage(siteIds);
+    if (prefs.siteId) {
+      setSelectedSiteId(prefs.siteId);
+      shouldAutoLoadBrowse.current = true;
+    }
+    if (prefs.daysPreset) setDaysFilterPreset(prefs.daysPreset);
+    if (prefs.daysCustom != null) setDaysFilterCustom(prefs.daysCustom);
+    if (prefs.sectionIds && prefs.sectionIds.length > 0 && prefs.siteId) {
+      setSectionIdsBySite((prev) => ({
+        ...prev,
+        [prefs.siteId!]: new Set(prefs.sectionIds!),
+      }));
+    }
+  }, [siteIds]);
 
   const daysFilter: number | "all" =
     daysFilterPreset === "custom"
@@ -287,6 +351,21 @@ export function MePageContent({ sites }: MePageContentProps) {
         return;
       }
       setBrowseEvents(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        const selected = sectionIdsBySite[selectedSiteId];
+        const sections = sectionsBySite[selectedSiteId] ?? [];
+        const enabledIds = sections.filter((s) => s.enabled).map((s) => s.id);
+        const idsToSave =
+          selected && selected.size > 0
+            ? Array.from(selected).filter((id) => enabledIds.includes(id))
+            : [];
+        saveBrowsePrefsToStorage({
+          siteId: selectedSiteId,
+          daysPreset: daysFilterPreset,
+          daysCustom: daysFilterCustom,
+          sectionIds: idsToSave.length > 0 ? idsToSave : undefined,
+        });
+      }
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : String(err ?? "未知错误");
@@ -295,7 +374,35 @@ export function MePageContent({ sites }: MePageContentProps) {
     } finally {
       setLoadingCached(false);
     }
-  }, [selectedSiteId, sectionsBySite, sectionIdsBySite, daysFilter]);
+  }, [
+    selectedSiteId,
+    sectionsBySite,
+    sectionIdsBySite,
+    daysFilter,
+    daysFilterPreset,
+    daysFilterCustom,
+  ]);
+
+  /* Auto-load browse events when restored from storage and sections are ready */
+  useEffect(() => {
+    if (
+      !selectedSiteId ||
+      !shouldAutoLoadBrowse.current ||
+      loadingSections ||
+      loadingCached
+    )
+      return;
+    const sections = sectionsBySite[selectedSiteId];
+    if (!sections || sections.length === 0) return;
+    shouldAutoLoadBrowse.current = false;
+    loadCachedEvents();
+  }, [
+    selectedSiteId,
+    sectionsBySite,
+    loadingSections,
+    loadingCached,
+    loadCachedEvents,
+  ]);
 
   const toggleSection = useCallback((siteId: string, sectionId: string) => {
     const sections = sectionsBySite[siteId] ?? [];
@@ -518,7 +625,14 @@ export function MePageContent({ sites }: MePageContentProps) {
                       type="radio"
                       name="browse-site"
                       checked={selectedSiteId === site.id}
-                      onChange={() => setSelectedSiteId(site.id)}
+                      onChange={() => {
+                        setSelectedSiteId(site.id);
+                        saveBrowsePrefsToStorage({
+                          siteId: site.id,
+                          daysPreset: daysFilterPreset,
+                          daysCustom: daysFilterCustom,
+                        });
+                      }}
                       className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                     />
                     {site.name} ({site.adapterKey})
@@ -541,7 +655,16 @@ export function MePageContent({ sites }: MePageContentProps) {
                       type="radio"
                       name="browse-days"
                       checked={daysFilterPreset === p}
-                      onChange={() => setDaysFilterPreset(p)}
+                      onChange={() => {
+                        setDaysFilterPreset(p);
+                        if (selectedSiteId) {
+                          saveBrowsePrefsToStorage({
+                            siteId: selectedSiteId,
+                            daysPreset: p,
+                            daysCustom: daysFilterCustom,
+                          });
+                        }
+                      }}
                       className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                     />
                     {p === "all" ? "全部" : `${p}天`}
@@ -552,7 +675,16 @@ export function MePageContent({ sites }: MePageContentProps) {
                     type="radio"
                     name="browse-days"
                     checked={daysFilterPreset === "custom"}
-                    onChange={() => setDaysFilterPreset("custom")}
+                    onChange={() => {
+                      setDaysFilterPreset("custom");
+                      if (selectedSiteId) {
+                        saveBrowsePrefsToStorage({
+                          siteId: selectedSiteId,
+                          daysPreset: "custom",
+                          daysCustom: daysFilterCustom,
+                        });
+                      }
+                    }}
                     className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                   />
                   自定义
@@ -567,6 +699,13 @@ export function MePageContent({ sites }: MePageContentProps) {
                         const v = parseInt(e.target.value, 10);
                         if (!Number.isNaN(v) && v >= 1) {
                           setDaysFilterCustom(v);
+                          if (selectedSiteId) {
+                            saveBrowsePrefsToStorage({
+                              siteId: selectedSiteId,
+                              daysPreset: "custom",
+                              daysCustom: v,
+                            });
+                          }
                         }
                       }}
                       className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
