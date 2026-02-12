@@ -3,6 +3,34 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { EventsTable, type EventItem } from "./EventsTable";
 
+const EVENTS_PAGE_SITES_STORAGE_KEY = "events-page-selected-sites";
+
+function loadSelectedSitesFromStorage(validSiteIds: string[]): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(EVENTS_PAGE_SITES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (id): id is string => typeof id === "string" && validSiteIds.includes(id)
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveSelectedSitesToStorage(siteIds: string[]) {
+  try {
+    localStorage.setItem(
+      EVENTS_PAGE_SITES_STORAGE_KEY,
+      JSON.stringify(siteIds)
+    );
+  } catch {
+    // ignore
+  }
+}
+
 export type SiteItem = {
   id: string;
   name: string;
@@ -41,8 +69,16 @@ function toSemanticError(err: string): string {
  */
 export function EventsPageContent({ sites }: EventsPageContentProps) {
   const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
+  const siteIds = useMemo(() => sites.map((s) => s.id), [sites]);
 
   const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const saved = loadSelectedSitesFromStorage(siteIds);
+    if (saved.length > 0) {
+      setSelectedSiteIds(saved);
+    }
+  }, [siteIds]);
   const [sectionIdsBySite, setSectionIdsBySite] = useState<
     Record<string, Set<string>>
   >({});
@@ -236,11 +272,13 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   }, [selectedSiteIds, updateEventsForSite]);
 
   const toggleSite = (siteId: string) => {
-    setSelectedSiteIds((prev) =>
-      prev.includes(siteId)
+    setSelectedSiteIds((prev) => {
+      const next = prev.includes(siteId)
         ? prev.filter((id) => id !== siteId)
-        : [...prev, siteId]
-    );
+        : [...prev, siteId];
+      saveSelectedSitesToStorage(next);
+      return next;
+    });
   };
 
   const toggleSection = (siteId: string, sectionId: string) => {
