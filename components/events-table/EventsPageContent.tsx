@@ -430,6 +430,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             followedIds={followedIds}
             onFollow={handleFollow}
             onUnfollow={handleUnfollow}
+            pageSize={10}
           />
         </div>
       )}
@@ -446,6 +447,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             followedIds={followedIds}
             onFollow={handleFollow}
             onUnfollow={handleUnfollow}
+            pageSize={10}
           />
         </div>
       )}
@@ -463,6 +465,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           followedIds={followedIds}
           onFollow={handleFollow}
           onUnfollow={handleUnfollow}
+          pageSize={10}
         />
       </div>
     </div>

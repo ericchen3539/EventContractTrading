@@ -5,12 +5,14 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
+  type PaginationState,
 } from "@tanstack/react-table";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 /** Event as returned by GET /api/sites/[siteId]/events */
 export type EventItem = {
@@ -41,6 +43,8 @@ interface EventsTableProps {
   /** Custom empty state message */
   emptyStateMessage?: string;
   emptyStateSubMessage?: string;
+  /** When provided, enable pagination with this page size (e.g. 10). Omit to show all rows. */
+  pageSize?: number;
 }
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -88,6 +92,8 @@ function formatDate(iso?: string | null): string {
  * Events table powered by TanStack Table.
  * Supports sorting and filtering.
  */
+const DEFAULT_PAGE_SIZE = 10;
+
 export function EventsTable({
   events,
   sectionNameMap,
@@ -97,12 +103,23 @@ export function EventsTable({
   onUnfollow,
   emptyStateMessage,
   emptyStateSubMessage,
+  pageSize,
 }: EventsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: false },
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const paginationEnabled = pageSize != null && pageSize > 0;
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
+  });
+  useEffect(() => {
+    if (paginationEnabled) {
+      setPagination((p) => ({ ...p, pageIndex: 0 }));
+    }
+  }, [events, paginationEnabled]);
 
   const columns = useMemo<ColumnDef<EventItem>[]>(
     () => [
@@ -210,13 +227,23 @@ export function EventsTable({
   const table = useReactTable({
     data: events,
     columns,
-    state: { sorting, columnFilters, globalFilter },
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+      ...(paginationEnabled && { pagination }),
+    },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
+    ...(paginationEnabled && { onPaginationChange: setPagination }),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    ...(paginationEnabled && {
+      getPaginationRowModel: getPaginationRowModel(),
+      manualPagination: false,
+    }),
   });
 
   if (events.length === 0) {
@@ -293,6 +320,33 @@ export function EventsTable({
           </tbody>
         </table>
       </div>
+      {paginationEnabled && (
+        <div className="flex items-center justify-between gap-4 px-2">
+          <span className="text-sm text-slate-600 dark:text-slate-400">
+            共 {table.getFilteredRowModel().rows.length} 条
+            {table.getPageCount() > 1 &&
+              `，第 ${table.getState().pagination.pageIndex + 1} / ${table.getPageCount()} 页`}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:hover:bg-slate-800"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:hover:bg-slate-800"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
