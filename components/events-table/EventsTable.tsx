@@ -218,10 +218,25 @@ export function EventsTable({
     [maxSelected, onSelectionChange]
   );
 
+  const clearSelection = useCallback(() => {
+    setRowSelection({});
+    setBatchOverflowMsg(null);
+    onSelectionChange?.(new Set());
+  }, [onSelectionChange]);
+
   const selectAllLimited = useCallback(
-    (table: { getFilteredRowModel?: () => { rows: { original: EventItem }[] } }) => {
+    (
+      table: { getFilteredRowModel?: () => { rows: { original: EventItem }[] } },
+      currentSelection: RowSelectionState
+    ) => {
       const rows = table?.getFilteredRowModel?.()?.rows ?? [];
       const ids = rows.slice(0, maxSelected).map((r) => (r.original as EventItem).id);
+      const allSelected =
+        ids.length > 0 && ids.every((id) => currentSelection[id]);
+      if (allSelected) {
+        clearSelection();
+        return;
+      }
       const sel: RowSelectionState = {};
       for (const id of ids) sel[id] = true;
       setRowSelection(sel);
@@ -230,14 +245,8 @@ export function EventsTable({
       );
       onSelectionChange?.(new Set(ids));
     },
-    [maxSelected, onSelectionChange]
+    [maxSelected, onSelectionChange, clearSelection]
   );
-
-  const clearSelection = useCallback(() => {
-    setRowSelection({});
-    setBatchOverflowMsg(null);
-    onSelectionChange?.(new Set());
-  }, [onSelectionChange]);
 
   const columns = useMemo<ColumnDef<EventItem>[]>(
     () => [
@@ -260,7 +269,7 @@ export function EventsTable({
                           table.getIsAllRowsSelected?.() ||
                           table.getIsSomeRowsSelected?.()
                         }
-                        onChange={() => selectAllLimited(table)}
+                        onChange={() => selectAllLimited(table, rowSelection)}
                         className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                         aria-label="全选"
                       />
@@ -381,6 +390,7 @@ export function EventsTable({
       enableSelectAll,
       maxSelected,
       selectAllLimited,
+      rowSelection,
     ]
   );
 
