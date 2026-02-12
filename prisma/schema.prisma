@@ -10,15 +10,16 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String?   @unique
-  emailVerified DateTime?
-  name          String?
-  image         String?
-  password      String?
-  accounts      Account[]
-  sessions      Session[]
-  sites         Site[]
+  id               String              @id @default(cuid())
+  email            String?             @unique
+  emailVerified    DateTime?
+  name             String?
+  image            String?
+  password         String?
+  accounts         Account[]
+  sessions         Session[]
+  sites            Site[]
+  followedEvents   UserFollowedEvent[]
 }
 
 model Account {
@@ -79,12 +80,12 @@ model Section {
 }
 
 model EventCache {
-  id          String    @id @default(cuid())
+  id          String               @id @default(cuid())
   siteId      String
   sectionId   String
   externalId  String
   title       String
-  description String?   @db.Text
+  description String?              @db.Text
   /** First market's trading end time (close_time or expiration_time). */
   createdAt   DateTime?
   endDate     DateTime?
@@ -92,10 +93,23 @@ model EventCache {
   liquidity   Float?
   outcomes    Json?
   raw         Json?
-  fetchedAt   DateTime  @default(now())
+  fetchedAt   DateTime             @default(now())
 
-  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  site           Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  section        Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  followedBy     UserFollowedEvent[]
 
   @@unique([siteId, sectionId, externalId])
+}
+
+model UserFollowedEvent {
+  id           String   @id @default(cuid())
+  userId       String
+  eventCacheId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventCache EventCache @relation(fields: [eventCacheId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventCacheId])
 }

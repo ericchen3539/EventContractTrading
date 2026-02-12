@@ -34,6 +34,13 @@ interface EventsTableProps {
   sectionNameMap: Record<string, string>;
   /** When provided and multiple sites, show site column */
   siteNameMap?: Record<string, string>;
+  /** When provided, show follow column with 关注/已关注 buttons */
+  followedIds?: Set<string>;
+  onFollow?: (eventId: string) => void;
+  onUnfollow?: (eventId: string) => void;
+  /** Custom empty state message */
+  emptyStateMessage?: string;
+  emptyStateSubMessage?: string;
 }
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -85,6 +92,11 @@ export function EventsTable({
   events,
   sectionNameMap,
   siteNameMap,
+  followedIds,
+  onFollow,
+  onUnfollow,
+  emptyStateMessage,
+  emptyStateSubMessage,
 }: EventsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -151,8 +163,46 @@ export function EventsTable({
         header: "更新时间",
         cell: ({ row }) => formatDate(row.original.fetchedAt),
       },
+      ...(onFollow && onUnfollow
+        ? [
+            {
+              id: "follow",
+              header: "操作",
+              cell: ({ row }: { row: { original: EventItem } }) => {
+                const eventId = row.original.id;
+                const isFollowed = followedIds?.has(eventId) ?? false;
+                return (
+                  <div className="flex items-center gap-2">
+                    {isFollowed ? (
+                      <>
+                        <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                          已关注
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onUnfollow(eventId)}
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                        >
+                          取消
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onFollow(eventId)}
+                        className="rounded bg-zinc-900 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                      >
+                        关注
+                      </button>
+                    )}
+                  </div>
+                );
+              },
+            } as ColumnDef<EventItem>,
+          ]
+        : []),
     ],
-    [sectionNameMap, siteNameMap]
+    [sectionNameMap, siteNameMap, followedIds, onFollow, onUnfollow]
   );
 
   const table = useReactTable({
@@ -168,12 +218,16 @@ export function EventsTable({
   });
 
   if (events.length === 0) {
+    const main = emptyStateMessage ?? "暂无事件数据";
+    const sub =
+      emptyStateSubMessage ??
+      (emptyStateMessage == null ? "请选择站点并点击「更新」拉取事件。" : undefined);
     return (
       <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-zinc-600 dark:text-zinc-400">暂无事件数据</p>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-          请选择站点并点击「更新」拉取事件。
-        </p>
+        <p className="text-zinc-600 dark:text-zinc-400">{main}</p>
+        {sub != null && (
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">{sub}</p>
+        )}
       </div>
     );
   }

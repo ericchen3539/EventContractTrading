@@ -44,6 +44,53 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   >({});
   const [updatingSiteId, setUpdatingSiteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+
+  const fetchFollowedIds = useCallback(async () => {
+    try {
+      const res = await fetch("/api/me/followed-event-ids");
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setFollowedIds(new Set(data));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFollowedIds();
+  }, [fetchFollowedIds]);
+
+  const handleFollow = useCallback(async (eventId: string) => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/follow`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        setFollowedIds((prev) => new Set([...prev, eventId]));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleUnfollow = useCallback(async (eventId: string) => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/follow`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setFollowedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(eventId);
+          return next;
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const fetchSectionsForSite = useCallback(
     async (siteId: string) => {
@@ -329,6 +376,9 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         events={events}
         sectionNameMap={sectionNameMap}
         siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
+        followedIds={followedIds}
+        onFollow={handleFollow}
+        onUnfollow={handleUnfollow}
       />
     </div>
   );
