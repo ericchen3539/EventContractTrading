@@ -87,24 +87,25 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         url.searchParams.set("sectionIds", idsToUse.join(","));
       }
       const res = await fetch(url.toString(), { credentials: "include" });
+      const statusHint = `[HTTP ${res.status}]`;
       let data: unknown;
       try {
         data = await res.json();
       } catch {
         const text = await res.text().catch(() => "");
-        setError(text || `HTTP ${res.status}`);
+        setError(text ? `${statusHint} ${text.slice(0, 150)}` : statusHint);
         return;
       }
       if (!res.ok) {
-        const errMsg = data && typeof data === "object" && "error" in data && typeof (data as { error: unknown }).error === "string"
-          ? (data as { error: string }).error
-          : "获取事件失败";
-        setError(errMsg);
+        const obj = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+        const errStr = typeof obj?.error === "string" ? obj.error : typeof obj?.message === "string" ? obj.message : null;
+        setError(errStr ? `${statusHint} ${errStr}` : `${statusHint} 获取事件失败`);
         return;
       }
       setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "获取事件失败");
+      const msg = err instanceof Error ? err.message : String(err ?? "未知错误");
+      setError(`请求失败: ${msg}`);
     } finally {
       setLoadingEvents(false);
     }
