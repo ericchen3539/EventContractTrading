@@ -85,7 +85,7 @@ model EventCache {
   externalId  String
   title       String
   description String?   @db.Text
-  /** Platform-side creation time (e.g. primary market created_time from Kalshi). */
+  /** First market's trading end time (close_time or expiration_time). */
   createdAt   DateTime?
   endDate     DateTime?
   volume      Float?

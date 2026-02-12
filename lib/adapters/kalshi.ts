@@ -161,7 +161,13 @@ async function getEventsAndMarkets(
       if (noVal !== undefined) outcomes.No = noVal;
 
       const endDate = primary?.close_time ?? primary?.expiration_time ?? ev.strike_date;
-      const createdAt = primary?.created_time ? new Date(primary.created_time) : undefined;
+      /** First market's trading end time (close_time or expiration_time). */
+      const createdAt =
+        primary?.close_time
+          ? new Date(primary.close_time)
+          : primary?.expiration_time
+            ? new Date(primary.expiration_time)
+            : undefined;
       results.push({
         externalId: ev.event_ticker,
         sectionExternalId: category,
