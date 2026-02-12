@@ -153,6 +153,11 @@ async function getEventsAndMarkets(
 
   let cursor: string | undefined;
   let isFirstPage = true;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(today);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
   do {
     if (!isFirstPage) await sleep(REQUEST_DELAY_MS);
     isFirstPage = false;
@@ -183,7 +188,14 @@ async function getEventsAndMarkets(
         const bTs = b.close_time ?? b.expiration_time ?? "";
         return aTs.localeCompare(bTs);
       });
-      const primary = sortedByClose[0] ?? allMarkets[0];
+      /** Primary must have deadline > today (user's operation date). Skip past markets. */
+      const primary = sortedByClose.find((m) => {
+        const ts = m.close_time ?? m.expiration_time;
+        if (!ts) return false;
+        const deadline = new Date(ts);
+        return deadline >= startOfTomorrow;
+      });
+      if (!primary) continue; // No market with deadline > today; skip event
       const lastMarket =
         sortedByClose.length > 1 ? sortedByClose[sortedByClose.length - 1] : primary;
       const volume = primary?.volume ?? 0;
