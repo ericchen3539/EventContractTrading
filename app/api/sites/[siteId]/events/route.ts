@@ -101,7 +101,7 @@ async function handleGet(
   if (sections.length === 0) {
     const cached = await prisma.eventCache.findMany({
       where: { siteId },
-      orderBy: { fetchedAt: "desc" },
+      orderBy: { createdAt: "asc" },
     });
     return NextResponse.json(cached.map(toPublicEvent));
   }
@@ -204,7 +204,7 @@ async function handleGet(
       siteId,
       sectionId: { in: Array.from(syncedSectionIds) },
     },
-    orderBy: [{ sectionId: "asc" }, { fetchedAt: "desc" }],
+    orderBy: { createdAt: "asc" },
   });
 
   return NextResponse.json(events.map(toPublicEvent));

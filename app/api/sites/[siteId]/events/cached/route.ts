@@ -111,7 +111,7 @@ async function handleGet(
 
   const events = await prisma.eventCache.findMany({
     where,
-    orderBy: [{ sectionId: "asc" }, { fetchedAt: "desc" }],
+    orderBy: { createdAt: "asc" },
   });
 
   return NextResponse.json(events.map(toPublicEvent));

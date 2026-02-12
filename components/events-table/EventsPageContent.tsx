@@ -178,6 +178,11 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         setEvents((prev) => {
           const rest = prev.filter((e) => e.siteId !== siteId);
           const merged = [...rest, ...newEvents];
+          merged.sort((a, b) => {
+            const aT = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
+            const bT = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
+            return aT - bT;
+          });
           return merged;
         });
       } catch (err) {

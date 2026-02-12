@@ -46,7 +46,12 @@ export async function GET() {
         fetchedAt: ec.fetchedAt.toISOString(),
         siteName: ec.site.name,
         sectionName: ec.section.name,
-      }));
+      }))
+      .sort((a, b) => {
+        const aT = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
+        const bT = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
+        return aT - bT;
+      });
 
     return NextResponse.json(events);
   } catch (err) {
