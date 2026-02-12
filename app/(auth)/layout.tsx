@@ -13,7 +13,7 @@ export default async function AuthLayout({
   const session = await getServerSession(authOptions);
   if (session) redirect("/me");
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
+    <div className="flex min-h-screen items-center justify-center bg-blue-50/40 px-4 dark:bg-slate-950">
       {children}
     </div>
   );

@@ -177,13 +177,13 @@ export function EventsTable({
                   <div className="flex items-center gap-2">
                     {isFollowed ? (
                       <>
-                        <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
                           已关注
                         </span>
                         <button
                           type="button"
                           onClick={() => onUnfollow(eventId)}
-                          className="rounded border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                          className="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
                         >
                           取消
                         </button>
@@ -192,7 +192,7 @@ export function EventsTable({
                       <button
                         type="button"
                         onClick={() => onFollow(eventId)}
-                        className="rounded bg-zinc-900 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                        className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400"
                       >
                         关注
                       </button>
@@ -225,10 +225,10 @@ export function EventsTable({
       emptyStateSubMessage ??
       (emptyStateMessage == null ? "请选择站点并点击「更新」拉取事件。" : undefined);
     return (
-      <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-zinc-600 dark:text-zinc-400">{main}</p>
+      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+        <p className="text-slate-600 dark:text-slate-400">{main}</p>
         {sub != null && (
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">{sub}</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">{sub}</p>
         )}
       </div>
     );
@@ -242,23 +242,23 @@ export function EventsTable({
           placeholder="搜索标题..."
           value={globalFilter ?? ""}
           onChange={(e) => setGlobalFilter(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                    className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300"
                   >
                     <div
                       className={
                         header.column.getCanSort()
-                          ? "cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
+                          ? "cursor-pointer select-none hover:text-slate-900 dark:hover:text-slate-100"
                           : ""
                       }
                       onClick={header.column.getToggleSortingHandler()}
@@ -274,16 +274,16 @@ export function EventsTable({
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                className="hover:bg-slate-50 dark:hover:bg-slate-800/50"
               >
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100"
+                    className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100"
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>

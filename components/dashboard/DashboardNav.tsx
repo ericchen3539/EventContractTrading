@@ -18,12 +18,12 @@ export function DashboardNav() {
   ];
 
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <nav className="flex items-center gap-6">
           <Link
             href="/sites"
-            className="text-lg font-semibold text-zinc-900 dark:text-zinc-100"
+            className="text-lg font-semibold text-blue-600 dark:text-blue-400"
           >
             Event Contract
           </Link>
@@ -36,8 +36,8 @@ export function DashboardNav() {
                   href={href}
                   className={`text-sm font-medium transition-colors ${
                     isActive
-                      ? "text-zinc-900 dark:text-zinc-100"
-                      : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
                 >
                   {label}
@@ -49,7 +49,7 @@ export function DashboardNav() {
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
         >
           退出登录
         </button>

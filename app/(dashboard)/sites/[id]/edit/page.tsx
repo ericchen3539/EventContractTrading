@@ -35,10 +35,10 @@ export default async function EditSitePage({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
         编辑站点
       </h1>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-slate-600 dark:text-slate-400">
         修改站点信息。凭证留空则不修改；填写新值将覆盖原有凭证。
       </p>
       <div className="mt-6">
@@ -49,7 +49,7 @@ export default async function EditSitePage({
       </div>
       <Link
         href="/sites"
-        className="mt-6 inline-block text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+        className="mt-6 inline-block text-sm text-blue-600 hover:text-blue-500 hover:underline dark:text-blue-400"
       >
         ← 返回站点列表
       </Link>

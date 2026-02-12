@@ -45,11 +45,11 @@ export function SiteList({ sites }: SiteListProps) {
 
   if (sites.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-        <p className="text-zinc-600 dark:text-zinc-400">暂无站点</p>
+      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+        <p className="text-slate-600 dark:text-slate-400">暂无站点</p>
         <Link
           href="/sites/new"
-          className="mt-4 inline-block rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400"
         >
           添加站点
         </Link>
@@ -58,34 +58,34 @@ export function SiteList({ sites }: SiteListProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
         <thead>
           <tr>
-            <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
               名称
             </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
               URL
             </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
               平台
             </th>
-            <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
               凭证
             </th>
-            <th className="px-4 py-3 text-right text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <th className="px-4 py-3 text-right text-sm font-medium text-slate-700 dark:text-slate-300">
               操作
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
           {sites.map((site) => (
-            <tr key={site.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-              <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">
+            <tr key={site.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+              <td className="px-4 py-3 text-slate-900 dark:text-slate-100">
                 {site.name}
               </td>
-              <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                 <a
                   href={site.baseUrl}
                   target="_blank"
@@ -95,16 +95,16 @@ export function SiteList({ sites }: SiteListProps) {
                   {site.baseUrl}
                 </a>
               </td>
-              <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                 {site.adapterKey}
               </td>
-              <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
+              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                 {site.hasCredentials ? "已设置" : "—"}
               </td>
               <td className="px-4 py-3 text-right">
                 <Link
                   href={`/sites/${site.id}/edit`}
-                  className="mr-3 text-sm font-medium text-zinc-700 hover:underline dark:text-zinc-300"
+                  className="mr-3 text-sm font-medium text-blue-600 hover:text-blue-500 hover:underline dark:text-blue-400"
                 >
                   编辑
                 </Link>

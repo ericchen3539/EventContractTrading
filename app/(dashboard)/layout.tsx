@@ -16,7 +16,7 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <DashboardNav />
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</main>
     </div>

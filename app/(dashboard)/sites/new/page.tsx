@@ -7,10 +7,10 @@ import { SiteForm } from "@/components/sites/SiteForm";
 export default function NewSitePage() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
         添加站点
       </h1>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-slate-600 dark:text-slate-400">
         添加外部交易平台（如 Kalshi）。读板块与事件无需登录信息；可选填凭证供后续扩展。
       </p>
       <div className="mt-6">
@@ -18,7 +18,7 @@ export default function NewSitePage() {
       </div>
       <Link
         href="/sites"
-        className="mt-6 inline-block text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+        className="mt-6 inline-block text-sm text-blue-600 hover:text-blue-500 hover:underline dark:text-blue-400"
       >
         ← 返回站点列表
       </Link>

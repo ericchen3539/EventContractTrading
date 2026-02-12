@@ -21,7 +21,7 @@ const ADAPTER_OPTIONS = [
 ] as const;
 
 const INPUT_CLASS =
-  "w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
 
 interface SiteFormProps {
   /** When provided, form submits PUT; otherwise POST. */
@@ -81,7 +81,7 @@ export function SiteForm({ site }: SiteFormProps) {
         <div>
           <label
             htmlFor="name"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             站点名称 *
           </label>
@@ -98,7 +98,7 @@ export function SiteForm({ site }: SiteFormProps) {
         <div>
           <label
             htmlFor="baseUrl"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             基础 URL *
           </label>
@@ -115,7 +115,7 @@ export function SiteForm({ site }: SiteFormProps) {
         <div>
           <label
             htmlFor="adapterKey"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             平台类型 *
           </label>
@@ -136,7 +136,7 @@ export function SiteForm({ site }: SiteFormProps) {
         <div>
           <label
             htmlFor="loginUsername"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             登录用户名（可选）
           </label>
@@ -152,7 +152,7 @@ export function SiteForm({ site }: SiteFormProps) {
         <div>
           <label
             htmlFor="loginPassword"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             登录密码（可选）
           </label>
@@ -172,13 +172,13 @@ export function SiteForm({ site }: SiteFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="rounded bg-zinc-900 px-4 py-2 font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
           >
             {loading ? "提交中…" : isEdit ? "保存" : "添加"}
           </button>
           <Link
             href="/sites"
-            className="rounded border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             取消
           </Link>

@@ -39,14 +39,14 @@ export default async function EventsPage() {
   if (sites.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           事件市场
         </h1>
-        <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-zinc-600 dark:text-zinc-400">暂无站点</p>
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-slate-600 dark:text-slate-400">暂无站点</p>
           <Link
             href="/sites/new"
-            className="mt-4 inline-block rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400"
           >
             添加站点
           </Link>

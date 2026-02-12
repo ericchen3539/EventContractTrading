@@ -52,7 +52,7 @@ export function LoginForm() {
         <div>
           <label
             htmlFor="email"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Email
           </label>
@@ -63,14 +63,14 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             placeholder="you@example.com"
           />
         </div>
         <div>
           <label
             htmlFor="password"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Password
           </label>
@@ -81,7 +81,7 @@ export function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
         {error && (
@@ -90,7 +90,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded bg-zinc-900 py-2 px-4 font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="w-full rounded-lg bg-blue-600 py-2 px-4 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>
@@ -98,10 +98,10 @@ export function LoginForm() {
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-zinc-300 dark:border-zinc-600" />
+          <div className="w-full border-t border-slate-300 dark:border-slate-600" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="bg-white px-2 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+          <span className="bg-white px-2 text-slate-500 dark:bg-slate-900 dark:text-slate-400">
             or
           </span>
         </div>
@@ -110,7 +110,7 @@ export function LoginForm() {
       <button
         type="button"
         onClick={handleGoogleSignIn}
-        className="flex w-full items-center justify-center gap-2 rounded border border-zinc-300 bg-white py-2 px-4 font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-2 px-4 font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
           <path
@@ -133,11 +133,11 @@ export function LoginForm() {
         Sign in with Google
       </button>
 
-      <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-center text-sm text-slate-600 dark:text-slate-400">
         No account?{" "}
         <Link
           href="/register"
-          className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
+          className="font-medium text-blue-600 hover:text-blue-500 hover:underline dark:text-blue-400"
         >
           Register
         </Link>

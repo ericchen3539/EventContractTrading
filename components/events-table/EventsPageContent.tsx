@@ -252,27 +252,27 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
         事件市场
       </h1>
 
-      <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
               站点（可多选）
             </label>
             <div className="mt-2 flex flex-wrap gap-2">
               {sites.map((site) => (
                 <label
                   key={site.id}
-                  className="flex cursor-pointer items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
                 >
                   <input
                     type="checkbox"
                     checked={selectedSiteIds.includes(site.id)}
                     onChange={() => toggleSite(site.id)}
-                    className="h-3.5 w-3.5 rounded border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600"
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                   />
                   {site.name} ({site.adapterKey})
                 </label>
@@ -294,10 +294,10 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
                 return (
                   <div
                     key={siteId}
-                    className="rounded border border-zinc-200 p-3 dark:border-zinc-700"
+                    className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"
                   >
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
                         {site?.name ?? siteId}
                       </span>
                       <button
@@ -307,7 +307,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
                           isUpdatingAny ||
                           (loading && updatingSiteId !== siteId)
                         }
-                        className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
                       >
                         {updatingSiteId === siteId
                           ? "更新中…"
@@ -315,14 +315,14 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
                       </button>
                     </div>
                     <div>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
                         板块筛选：
                         {selectedCount === 0 || selectedCount === enabledSections.length
                           ? "全部已启用板块"
                           : `已选 ${selectedCount} 个`}
                       </span>
                       {loading ? (
-                        <p className="mt-1 text-sm text-zinc-500">
+                        <p className="mt-1 text-sm text-slate-500">
                           加载板块中…
                         </p>
                       ) : enabledSections.length > 0 ? (
@@ -330,7 +330,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
                           {enabledSections.map((sec) => (
                             <label
                               key={sec.id}
-                              className="flex cursor-pointer items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                              className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
                             >
                               <input
                                 type="checkbox"
@@ -342,14 +342,14 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
                                 onChange={() =>
                                   toggleSection(siteId, sec.id)
                                 }
-                                className="h-3.5 w-3.5 rounded border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600"
+                                className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                               />
                               {sec.name}
                             </label>
                           ))}
                         </div>
                       ) : (
-                        <p className="mt-1 text-sm text-zinc-500">
+                        <p className="mt-1 text-sm text-slate-500">
                           无已启用板块，请先在站点编辑页勾选板块。
                         </p>
                       )}
@@ -363,7 +363,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
                   type="button"
                   onClick={updateAllSites}
                   disabled={isUpdatingAny}
-                  className="rounded bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
                 >
                   {updatingSiteId ? "更新中…" : "更新全部"}
                 </button>

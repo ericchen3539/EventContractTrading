@@ -108,35 +108,35 @@ export function SectionSelector({ siteId }: SectionSelectorProps) {
 
   if (loading) {
     return (
-      <div className="rounded border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">加载板块中…</p>
+      <div className="rounded-lg border border-slate-200 bg-blue-50/50 p-4 dark:border-slate-700 dark:bg-slate-800">
+        <p className="text-sm text-slate-600 dark:text-slate-400">加载板块中…</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
+    <div className="rounded-lg border border-slate-200 bg-blue-50/50 p-4 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between gap-4">
-        <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
           板块选择
         </h3>
         <button
           type="button"
           onClick={handleSync}
           disabled={syncing}
-          className="rounded bg-zinc-700 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-600 disabled:opacity-50 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
         >
           {syncing ? "同步中…" : "从平台同步"}
         </button>
       </div>
-      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
         勾选要拉取事件的板块；首次使用请先点击「从平台同步」获取可用板块。
       </p>
       {error && (
         <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
       {sections.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
           暂无板块，点击「从平台同步」拉取。
         </p>
       ) : (
@@ -144,18 +144,18 @@ export function SectionSelector({ siteId }: SectionSelectorProps) {
           {sections.map((sec) => (
             <li
               key={sec.id}
-              className="flex items-center gap-3 rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-900"
+              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
             >
               <input
                 type="checkbox"
                 id={`section-${sec.id}`}
                 checked={sec.enabled}
                 onChange={() => handleToggle(sec)}
-                className="h-4 w-4 rounded border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800"
               />
               <label
                 htmlFor={`section-${sec.id}`}
-                className="flex-1 cursor-pointer text-sm text-zinc-800 dark:text-zinc-200"
+                className="flex-1 cursor-pointer text-sm text-slate-800 dark:text-slate-200"
               >
                 {sec.name}
               </label>
