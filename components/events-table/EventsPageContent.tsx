@@ -2,14 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { EventsTable, type EventItem } from "./EventsTable";
-import {
-  loadSelectedSiteIds,
-  saveSelectedSiteIds,
-  loadSectionIdsBySite,
-  saveSectionIdsBySite,
-  loadCachedEvents,
-  saveCachedEvents,
-} from "@/lib/events-storage";
 
 export type SiteItem = {
   id: string;
@@ -34,56 +26,24 @@ interface EventsPageContentProps {
 }
 
 /**
- * Events page content: multi-site/section selectors, persisted state,
- * per-site update, and table. Results and selections persist in localStorage.
+ * Events page content: multi-site/section selectors, per-site update, and table.
  */
 export function EventsPageContent({ sites }: EventsPageContentProps) {
-  const siteIds = useMemo(() => sites.map((s) => s.id), [sites]);
   const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
 
-  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>(() =>
-    loadSelectedSiteIds(siteIds)
-  );
+  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
   const [sectionIdsBySite, setSectionIdsBySite] = useState<
     Record<string, Set<string>>
-  >(() => {
-    const loaded = loadSectionIdsBySite(siteIds);
-    const out: Record<string, Set<string>> = {};
-    for (const [sid, arr] of Object.entries(loaded)) {
-      out[sid] = new Set(arr);
-    }
-    return out;
-  });
+  >({});
   const [sectionsBySite, setSectionsBySite] = useState<
     Record<string, SectionItem[]>
   >({});
-  const [events, setEvents] = useState<EventItem[]>(() =>
-    loadCachedEvents<EventItem>(siteIds)
-  );
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [loadingSectionsBySite, setLoadingSectionsBySite] = useState<
     Record<string, boolean>
   >({});
   const [updatingSiteId, setUpdatingSiteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // Persist selectedSiteIds
-  useEffect(() => {
-    saveSelectedSiteIds(selectedSiteIds);
-  }, [selectedSiteIds]);
-
-  // Persist sectionIdsBySite
-  useEffect(() => {
-    const toSave: Record<string, string[]> = {};
-    for (const [siteId, set] of Object.entries(sectionIdsBySite)) {
-      if (set.size > 0) toSave[siteId] = Array.from(set);
-    }
-    saveSectionIdsBySite(toSave);
-  }, [sectionIdsBySite]);
-
-  // Persist events
-  useEffect(() => {
-    saveCachedEvents(events);
-  }, [events]);
 
   const fetchSectionsForSite = useCallback(
     async (siteId: string) => {
