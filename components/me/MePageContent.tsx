@@ -234,6 +234,45 @@ export function MePageContent({ sites }: MePageContentProps) {
 
       <div className="space-y-4">
         <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
+          我的事件
+        </h2>
+
+        {loadingFollowed ? (
+          <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="text-zinc-600 dark:text-zinc-400">加载中…</p>
+          </div>
+        ) : followedEvents.length === 0 ? (
+          <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="text-zinc-600 dark:text-zinc-400">暂无关注事件</p>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+              前往{" "}
+              <Link
+                href="/events"
+                className="font-medium text-zinc-900 underline hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
+              >
+                事件市场
+              </Link>{" "}
+              或在下方浏览并添加关注
+            </p>
+          </div>
+        ) : (
+          <EventsTable
+            events={followedEvents}
+            sectionNameMap={followedSectionNameMap}
+            siteNameMap={
+              Object.keys(followedSiteNameMap).length > 1
+                ? followedSiteNameMap
+                : undefined
+            }
+            followedIds={followedIds}
+            onFollow={handleFollow}
+            onUnfollow={handleUnfollow}
+          />
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
           浏览并关注
         </h2>
         <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -343,45 +382,6 @@ export function MePageContent({ sites }: MePageContentProps) {
               : "请先在事件市场点击「更新」拉取事件。"
           }
         />
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
-          我的事件
-        </h2>
-
-        {loadingFollowed ? (
-          <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-            <p className="text-zinc-600 dark:text-zinc-400">加载中…</p>
-          </div>
-        ) : followedEvents.length === 0 ? (
-          <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-            <p className="text-zinc-600 dark:text-zinc-400">暂无关注事件</p>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-              前往{" "}
-              <Link
-                href="/events"
-                className="font-medium text-zinc-900 underline hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
-              >
-                事件市场
-              </Link>{" "}
-              或在上方浏览并添加关注
-            </p>
-          </div>
-        ) : (
-          <EventsTable
-            events={followedEvents}
-            sectionNameMap={followedSectionNameMap}
-            siteNameMap={
-              Object.keys(followedSiteNameMap).length > 1
-                ? followedSiteNameMap
-                : undefined
-            }
-            followedIds={followedIds}
-            onFollow={handleFollow}
-            onUnfollow={handleUnfollow}
-          />
-        )}
       </div>
     </div>
   );
