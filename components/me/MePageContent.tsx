@@ -35,6 +35,18 @@ export function MePageContent({ sites }: MePageContentProps) {
   const [loadingCached, setLoadingCached] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
 
+  const [daysFilterPreset, setDaysFilterPreset] = useState<
+    "3" | "7" | "30" | "all" | "custom"
+  >("3");
+  const [daysFilterCustom, setDaysFilterCustom] = useState(1);
+
+  const daysFilter: number | "all" =
+    daysFilterPreset === "custom"
+      ? daysFilterCustom
+      : daysFilterPreset === "all"
+        ? "all"
+        : parseInt(daysFilterPreset, 10);
+
   const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
 
   const fetchFollowedEvents = useCallback(async () => {
@@ -143,6 +155,11 @@ export function MePageContent({ sites }: MePageContentProps) {
       if (idsToUse.length > 0) {
         url.searchParams.set("sectionIds", idsToUse.join(","));
       }
+      if (daysFilter === "all") {
+        url.searchParams.set("days", "all");
+      } else {
+        url.searchParams.set("days", String(Math.max(1, daysFilter)));
+      }
       const res = await fetch(url.toString(), { credentials: "include" });
       const data = await res.json();
       if (!res.ok) {
@@ -165,7 +182,7 @@ export function MePageContent({ sites }: MePageContentProps) {
     } finally {
       setLoadingCached(false);
     }
-  }, [selectedSiteId, sectionsBySite, sectionIdsBySite]);
+  }, [selectedSiteId, sectionsBySite, sectionIdsBySite, daysFilter]);
 
   const toggleSection = useCallback((siteId: string, sectionId: string) => {
     const sections = sectionsBySite[siteId] ?? [];
@@ -297,6 +314,58 @@ export function MePageContent({ sites }: MePageContentProps) {
                     {site.name} ({site.adapterKey})
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                天数范围（最近交易结束时间）
+              </label>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {(["3", "7", "30", "all"] as const).map((p) => (
+                  <label
+                    key={p}
+                    className="flex cursor-pointer items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                  >
+                    <input
+                      type="radio"
+                      name="browse-days"
+                      checked={daysFilterPreset === p}
+                      onChange={() => setDaysFilterPreset(p)}
+                      className="h-3.5 w-3.5 rounded-full border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600"
+                    />
+                    {p === "all" ? "全部" : `${p}天`}
+                  </label>
+                ))}
+                <label className="flex cursor-pointer items-center gap-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800">
+                  <input
+                    type="radio"
+                    name="browse-days"
+                    checked={daysFilterPreset === "custom"}
+                    onChange={() => setDaysFilterPreset("custom")}
+                    className="h-3.5 w-3.5 rounded-full border-zinc-300 text-zinc-700 focus:ring-zinc-500 dark:border-zinc-600"
+                  />
+                  自定义
+                </label>
+                {daysFilterPreset === "custom" && (
+                  <>
+                    <input
+                      type="number"
+                      min={1}
+                      value={daysFilterCustom}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!Number.isNaN(v) && v >= 1) {
+                          setDaysFilterCustom(v);
+                        }
+                      }}
+                      className="w-16 rounded border border-zinc-200 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                    />
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                      天
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 

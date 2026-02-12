@@ -1,6 +1,8 @@
 /**
  * Cached events API: GET — read EventCache from DB only (no adapter call).
- * Requires auth and site ownership. Optional ?sectionIds=id1,id2 to filter sections.
+ * Requires auth and site ownership.
+ * Optional ?sectionIds=id1,id2 to filter sections.
+ * Optional ?days=N to filter by createdAt (trading end time) <= today + N days; ?days=all for no date filter.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -89,11 +91,26 @@ async function handleGet(
   }
 
   const sectionIds = sections.map((s) => s.id);
+  const where: {
+    siteId: string;
+    sectionId: { in: string[] };
+    createdAt?: { lte: Date };
+  } = {
+    siteId,
+    sectionId: { in: sectionIds },
+  };
+
+  const daysParam = searchParams.get("days");
+  if (daysParam && daysParam !== "all") {
+    const days = parseInt(daysParam, 10);
+    if (days > 0) {
+      const cutoff = new Date(Date.now() + days * 86400000);
+      where.createdAt = { lte: cutoff };
+    }
+  }
+
   const events = await prisma.eventCache.findMany({
-    where: {
-      siteId,
-      sectionId: { in: sectionIds },
-    },
+    where,
     orderBy: [{ sectionId: "asc" }, { fetchedAt: "desc" }],
   });
 
