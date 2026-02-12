@@ -86,15 +86,25 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
       if (idsToUse.length > 0) {
         url.searchParams.set("sectionIds", idsToUse.join(","));
       }
-      const res = await fetch(url.toString());
-      const data = await res.json();
+      const res = await fetch(url.toString(), { credentials: "include" });
+      let data: unknown;
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => "");
+        setError(text || `HTTP ${res.status}`);
+        return;
+      }
       if (!res.ok) {
-        setError(data.error ?? "获取事件失败");
+        const errMsg = data && typeof data === "object" && "error" in data && typeof (data as { error: unknown }).error === "string"
+          ? (data as { error: string }).error
+          : "获取事件失败";
+        setError(errMsg);
         return;
       }
       setEvents(Array.isArray(data) ? data : []);
-    } catch {
-      setError("获取事件失败");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "获取事件失败");
     } finally {
       setLoadingEvents(false);
     }

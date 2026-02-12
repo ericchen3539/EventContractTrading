@@ -102,6 +102,12 @@ export async function GET(
     adapterEvents = await adapter.getEventsAndMarkets(siteInput, sectionExternalIds);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Adapter fetch failed";
+    console.error("[events] Adapter fetch failed:", {
+      siteId,
+      adapterKey: site.adapterKey,
+      sectionCount: sectionExternalIds.length,
+      error: err,
+    });
     return NextResponse.json(
       { error: `Failed to fetch events: ${msg}` },
       { status: 502 }

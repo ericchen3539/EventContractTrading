@@ -69,7 +69,7 @@ async function fetchJson<T>(url: string): Promise<T> {
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
       signal: controller.signal,
-      next: { revalidate: 60 },
+      cache: "no-store", // Always fetch fresh data; revalidate can cause stale/weird behavior in Route Handlers
     });
     if (!res.ok) {
       throw new Error(`Kalshi API error: ${res.status} ${res.statusText}`);
