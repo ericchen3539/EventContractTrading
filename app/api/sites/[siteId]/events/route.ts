@@ -3,6 +3,9 @@
  * Requires auth and site ownership. Optional ?sectionIds=id1,id2 to filter sections.
  */
 import { NextRequest, NextResponse } from "next/server";
+
+/** Pro plan: 300s max. Kalshi returns many events; sequential upserts need full duration. */
+export const maxDuration = 300;
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
@@ -129,7 +132,9 @@ async function handleGet(
 
   const syncedSectionIds = new Set(sections.map((s) => s.id));
 
-  await prisma.$transaction(async (tx) => {
+  const TX_TIMEOUT_MS = 180_000; // 3 min; Pro allows 300s, leave headroom for Kalshi fetch + response
+  await prisma.$transaction(
+    async (tx) => {
     for (const ev of adapterEvents) {
       const section = externalToSection.get(ev.sectionExternalId);
       if (!section) continue;
@@ -186,7 +191,9 @@ async function handleGet(
         });
       }
     }
-  });
+  },
+    { timeout: TX_TIMEOUT_MS }
+  );
 
   const events = await prisma.eventCache.findMany({
     where: {

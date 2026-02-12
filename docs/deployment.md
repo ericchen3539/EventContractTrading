@@ -73,6 +73,11 @@ npx vercel --prod
 - `postinstall`: `prisma generate` — 生成 Prisma Client
 - `build`: `prisma migrate deploy && next build` — 执行数据库迁移并构建 Next.js
 
+## 计划说明
+
+- **事件市场刷新**：Kalshi 拉取大量事件，需较长执行时间。**Pro 计划**下 `/api/sites/[siteId]/events` 已配置 `maxDuration=300s`（5 分钟）。Hobby 计划限于 10s，可能超时。
+- 建议使用 Pro 计划以获得完整事件拉取能力。
+
 ## 首次部署后
 
 1. 部署完成后，访问 `https://<project>.vercel.app`
