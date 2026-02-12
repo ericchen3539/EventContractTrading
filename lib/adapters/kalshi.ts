@@ -25,6 +25,9 @@ interface KalshiEventsResponse {
   cursor?: string;
 }
 
+/** Kalshi uses "active" for open markets, not "open". */
+const OPEN_MARKET_STATUSES = new Set(["open", "active"]);
+
 interface KalshiEvent {
   event_ticker: string;
   series_ticker: string;
@@ -172,15 +175,17 @@ async function getEventsAndMarkets(
       const category = ev.category;
       if (!category || !categorySet.has(category)) continue;
 
-      /** First market in UI = soonest close_time among open markets; matches Kalshi display order. */
-      const openMarkets = (ev.markets ?? []).filter((m) => m.status === "open");
+      const allMarkets = ev.markets ?? [];
+      /** First market in UI = soonest close_time among open markets. Kalshi uses status "active". */
+      const openMarkets = allMarkets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
       const sortedByClose = [...openMarkets].sort((a, b) => {
         const aTs = a.close_time ?? a.expiration_time ?? "";
         const bTs = b.close_time ?? b.expiration_time ?? "";
         return aTs.localeCompare(bTs);
       });
-      const primary = sortedByClose[0] ?? ev.markets?.[0];
-      const lastMarket = sortedByClose.length > 1 ? sortedByClose[sortedByClose.length - 1] : primary;
+      const primary = sortedByClose[0] ?? allMarkets[0];
+      const lastMarket =
+        sortedByClose.length > 1 ? sortedByClose[sortedByClose.length - 1] : primary;
       const volume = primary?.volume ?? 0;
       const liquidityRaw = primary?.liquidity_dollars ?? primary?.liquidity;
       const liquidity =
