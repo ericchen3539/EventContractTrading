@@ -239,6 +239,7 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
           return;
         }
         setData(json);
+        setEventTickerToTitle((json.eventTickerToTitle as Record<string, string>) ?? {});
         toast.success("加载成功");
       } catch {
         toast.error("加载失败：网络错误，请稍后重试");

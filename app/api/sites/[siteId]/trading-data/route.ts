@@ -61,7 +61,26 @@ export async function GET(
       decryptedPrivateKey
     );
 
-    return NextResponse.json(data);
+    const eventTickers = [
+      ...new Set(
+        (data.eventPositions ?? [])
+          .map((p) => p.event_ticker)
+          .filter((t): t is string => !!t)
+      ),
+    ];
+    const cached =
+      eventTickers.length > 0
+        ? await prisma.eventCache.findMany({
+            where: { siteId, externalId: { in: eventTickers } },
+            select: { externalId: true, title: true },
+          })
+        : [];
+    const eventTickerToTitle: Record<string, string> = {};
+    for (const c of cached) {
+      eventTickerToTitle[c.externalId] = c.title;
+    }
+
+    return NextResponse.json({ ...data, eventTickerToTitle });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const apiBase = getKalshiApiBase(site.baseUrl);
