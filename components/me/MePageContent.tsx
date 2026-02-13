@@ -16,7 +16,7 @@ import type { SiteItem, SectionItem } from "@/components/events-table/EventsPage
 const ATTENTION_FILTER_STORAGE_KEY = "me-page-attention-filter";
 const BROWSE_PREFS_STORAGE_KEY = "me-page-browse-prefs";
 
-type AttentionFilterPreset = "0" | "1" | "2" | "3" | "custom";
+type AttentionFilterPreset = "0" | "1" | "2" | "3" | "4" | "5" | "custom";
 type DaysFilterPreset = "3" | "7" | "14" | "30" | "all" | "custom";
 
 function loadAttentionFilterFromStorage(): {
@@ -28,7 +28,7 @@ function loadAttentionFilterFromStorage(): {
     const raw = localStorage.getItem(ATTENTION_FILTER_STORAGE_KEY);
     if (!raw) return { preset: "1", custom: 1 };
     const parsed = JSON.parse(raw) as { preset?: string; custom?: number };
-    const preset = ["0", "1", "2", "3", "custom"].includes(parsed?.preset ?? "")
+    const preset = ["0", "1", "2", "3", "4", "5", "custom"].includes(parsed?.preset ?? "")
       ? (parsed.preset as AttentionFilterPreset)
       : "1";
     const custom =
@@ -713,7 +713,7 @@ export function MePageContent({ sites }: MePageContentProps) {
               <span className="text-sm text-slate-600 dark:text-slate-400">
                 关注度 ≥
               </span>
-              {(["0", "1", "2", "3"] as const).map((p) => (
+              {(["0", "1", "2", "3", "4", "5"] as const).map((p) => (
                 <label
                   key={p}
                   className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
