@@ -175,6 +175,62 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
     []
   );
 
+  const handleBatchUpdateMarkets = useCallback(
+    async (eventIds: string[]) => {
+      if (eventIds.length === 0) return;
+      try {
+        const res = await fetch("/api/events/markets/update/batch", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventIds }),
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const errStr = typeof data?.error === "string" ? data.error : "批量更新失败";
+          toast.error(`批量更新所有市场失败：${errStr}`);
+          return;
+        }
+        const apiNew = Array.isArray(data?.newMarkets) ? data.newMarkets : [];
+        const apiChanged = Array.isArray(data?.changedMarkets) ? data.changedMarkets : [];
+        const newCount = typeof data?.newCount === "number" ? data.newCount : 0;
+        const changedCount = typeof data?.changedCount === "number" ? data.changedCount : 0;
+        const failedCount = typeof data?.failedCount === "number" ? data.failedCount : 0;
+
+        if (apiNew.length > 0 || apiChanged.length > 0) {
+          setNewMarkets((prev) => {
+            const byId = new Map(prev.map((m) => [m.id, m]));
+            for (const m of apiNew) byId.set(m.id, m as MarketItem);
+            return Array.from(byId.values());
+          });
+          setChangedMarkets((prev) => {
+            const byId = new Map(prev.map((m) => [m.id, m]));
+            for (const m of apiChanged) byId.set(m.id, m as MarketItem);
+            return Array.from(byId.values());
+          });
+        }
+
+        const parts: string[] = [];
+        if (newCount > 0) parts.push(`新增 ${newCount} 个市场`);
+        if (changedCount > 0) parts.push(`更新 ${changedCount} 个市场`);
+        if (failedCount > 0) {
+          toast.error(
+            parts.length > 0
+              ? `批量更新完成：${parts.join("，")}；${failedCount} 个事件失败`
+              : `批量更新完成：${failedCount} 个事件失败`
+          );
+        } else {
+          toast.success(
+            parts.length > 0 ? parts.join("，") : "已批量更新，暂无新增或变更的市场"
+          );
+        }
+      } catch {
+        toast.error("批量更新所有市场失败：网络或服务器错误，请稍后重试");
+      }
+    },
+    []
+  );
+
   const handleMarketAttentionChange = useCallback(
     async (marketId: string, level: number) => {
       try {
@@ -600,6 +656,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             onAttentionChange={handleAttentionChange}
             onBatchAttentionChange={handleBatchAttentionChange}
             onUpdateMarkets={handleUpdateMarkets}
+            onBatchUpdateMarkets={handleBatchUpdateMarkets}
             pageSize={10}
             selectable
             enableSelectAll
@@ -620,6 +677,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             onAttentionChange={handleAttentionChange}
             onBatchAttentionChange={handleBatchAttentionChange}
             onUpdateMarkets={handleUpdateMarkets}
+            onBatchUpdateMarkets={handleBatchUpdateMarkets}
             pageSize={10}
             highlightColumns={["createdAt", "endDate"]}
             selectable

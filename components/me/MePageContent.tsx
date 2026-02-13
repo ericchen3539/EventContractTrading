@@ -313,6 +313,46 @@ export function MePageContent({ sites }: MePageContentProps) {
     }
   }, []);
 
+  const handleBatchUpdateMarkets = useCallback(
+    async (eventIds: string[]) => {
+      if (eventIds.length === 0) return;
+      try {
+        const res = await fetch("/api/events/markets/update/batch", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventIds }),
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const errStr = typeof data?.error === "string" ? data.error : "批量更新失败";
+          toast.error(`批量更新所有市场失败：${errStr}`);
+          return;
+        }
+        const newCount = typeof data?.newCount === "number" ? data.newCount : 0;
+        const changedCount = typeof data?.changedCount === "number" ? data.changedCount : 0;
+        const failedCount = typeof data?.failedCount === "number" ? data.failedCount : 0;
+        const parts: string[] = [];
+        if (newCount > 0) parts.push(`新增 ${newCount} 个市场`);
+        if (changedCount > 0) parts.push(`更新 ${changedCount} 个市场`);
+        if (failedCount > 0) {
+          toast.error(
+            parts.length > 0
+              ? `批量更新完成：${parts.join("，")}；${failedCount} 个事件失败`
+              : `批量更新完成：${failedCount} 个事件失败`
+          );
+        } else {
+          toast.success(
+            parts.length > 0 ? parts.join("，") : "已批量更新，暂无新增或变更的市场"
+          );
+        }
+      } catch {
+        toast.error("批量更新所有市场失败：网络或服务器错误，请稍后重试");
+      }
+    },
+    []
+  );
+
   const followedAttentionMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const e of followedEvents) {
@@ -644,6 +684,7 @@ export function MePageContent({ sites }: MePageContentProps) {
             onAttentionChange={handleAttentionChange}
             onBatchAttentionChange={handleBatchAttentionChange}
             onUpdateMarkets={handleUpdateMarkets}
+            onBatchUpdateMarkets={handleBatchUpdateMarkets}
             pageSize={10}
             selectable
             enableSelectAll
@@ -834,6 +875,7 @@ export function MePageContent({ sites }: MePageContentProps) {
           onAttentionChange={handleAttentionChange}
           onBatchAttentionChange={handleBatchAttentionChange}
           onUpdateMarkets={handleUpdateMarkets}
+          onBatchUpdateMarkets={handleBatchUpdateMarkets}
           pageSize={10}
           selectable
           enableSelectAll

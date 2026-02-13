@@ -63,6 +63,8 @@ interface EventsTableProps {
   onBatchAttentionChange?: (eventIds: string[], level: number) => void;
   /** When provided, show "更新所有市场" column; called per event row */
   onUpdateMarkets?: (eventId: string) => Promise<void>;
+  /** Batch update all markets for selected events; called with concurrency control by parent */
+  onBatchUpdateMarkets?: (eventIds: string[]) => Promise<void>;
 }
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -202,6 +204,7 @@ export function EventsTable({
   onSelectionChange,
   onBatchAttentionChange,
   onUpdateMarkets,
+  onBatchUpdateMarkets,
 }: EventsTableProps) {
   const highlightSet = useMemo(
     () => new Set(highlightColumns ?? []),
@@ -217,6 +220,7 @@ export function EventsTable({
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchModalLevel, setBatchModalLevel] = useState(1);
   const [batchApplying, setBatchApplying] = useState(false);
+  const [batchUpdatingMarkets, setBatchUpdatingMarkets] = useState(false);
   const paginationEnabled = pageSize != null && pageSize > 0;
   const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
   const [pagination, setPagination] = useState<PaginationState>({
@@ -478,7 +482,7 @@ export function EventsTable({
   const showBatchBar =
     selectable &&
     selectedIds.length > 0 &&
-    onBatchAttentionChange != null;
+    (onBatchAttentionChange != null || onBatchUpdateMarkets != null);
 
   const handleBatchConfirm = useCallback(
     async (level: number) => {
@@ -508,6 +512,19 @@ export function EventsTable({
       clearSelection,
     ]
   );
+
+  const handleBatchUpdateMarketsClick = useCallback(async () => {
+    if (selectedIds.length > maxSelected || !onBatchUpdateMarkets) return;
+    setBatchUpdatingMarkets(true);
+    try {
+      await onBatchUpdateMarkets(selectedIds);
+      clearSelection();
+    } catch {
+      // Parent handles error display
+    } finally {
+      setBatchUpdatingMarkets(false);
+    }
+  }, [selectedIds, maxSelected, onBatchUpdateMarkets, clearSelection]);
 
   if (events.length === 0) {
     const main = emptyStateMessage ?? "暂无事件数据";
@@ -544,17 +561,29 @@ export function EventsTable({
                 {batchOverflowMsg}
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                setShowBatchModal(true);
-                setBatchModalLevel(1);
-              }}
-              disabled={selectedIds.length > maxSelected}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
-            >
-              批量修改
-            </button>
+            {onBatchAttentionChange != null && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBatchModal(true);
+                  setBatchModalLevel(1);
+                }}
+                disabled={selectedIds.length > maxSelected || batchUpdatingMarkets}
+                className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+              >
+                批量修改关注度
+              </button>
+            )}
+            {onBatchUpdateMarkets != null && (
+              <button
+                type="button"
+                onClick={handleBatchUpdateMarketsClick}
+                disabled={selectedIds.length > maxSelected || batchApplying || batchUpdatingMarkets}
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+              >
+                {batchUpdatingMarkets ? "更新中…" : "批量更新所有市场"}
+              </button>
+            )}
             <button
               type="button"
               onClick={clearSelection}
