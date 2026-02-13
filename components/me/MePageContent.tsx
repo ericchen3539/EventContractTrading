@@ -844,7 +844,7 @@ export function MePageContent({ sites }: MePageContentProps) {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                天数范围（最近交易结束时间）
+                天数范围（最近交易截止时间）
               </label>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {(["3", "7", "14", "30", "all"] as const).map((p) => (

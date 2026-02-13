@@ -25,7 +25,7 @@ export type EventItem = {
   externalId: string;
   title: string;
   description?: string;
-  /** First market's trading end time (close_time or expiration_time). */
+  /** First market's trading close time (交易截止时间 from Timeline and payout). */
   createdAt?: string;
   endDate?: string;
   volume?: number;
@@ -369,7 +369,7 @@ export function EventsTable({
       },
       {
         accessorKey: "createdAt",
-        header: "最近交易结束时间",
+        header: "最近交易截止时间",
         cell: ({ row }) => formatDate(row.original.createdAt),
       },
       {

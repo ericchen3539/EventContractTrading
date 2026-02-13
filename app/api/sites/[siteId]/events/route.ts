@@ -20,7 +20,7 @@ async function getSiteForUser(siteId: string, userId: string) {
   });
 }
 
-/** Compare only 最近交易时间 (createdAt) and 结束日期 (endDate). All other field changes ignored. */
+/** Compare only 最近交易截止时间 (createdAt) and 结束日期 (endDate). All other field changes ignored. */
 function hasSemanticChanges(
   ev: EventMarketInput,
   existing: {

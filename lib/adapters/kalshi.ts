@@ -182,23 +182,23 @@ async function getEventsAndMarkets(
       if (!category || !categorySet.has(category)) continue;
 
       const allMarkets = ev.markets ?? [];
-      /** First market in UI = soonest close_time among open markets. Kalshi uses status "active". */
+      /** First market = soonest trading close time (expiration_time ?? close_time). Kalshi uses status "active". */
       const openMarkets = allMarkets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
-      const sortedByClose = [...openMarkets].sort((a, b) => {
-        const aTs = a.close_time ?? a.expiration_time ?? "";
-        const bTs = b.close_time ?? b.expiration_time ?? "";
+      const sortedByTradingClose = [...openMarkets].sort((a, b) => {
+        const aTs = a.expiration_time ?? a.close_time ?? "";
+        const bTs = b.expiration_time ?? b.close_time ?? "";
         return aTs.localeCompare(bTs);
       });
-      /** Primary must have deadline > today (user's operation date). Skip past markets. */
-      const primary = sortedByClose.find((m) => {
-        const ts = m.close_time ?? m.expiration_time;
+      /** Primary must have trading deadline > today (user's operation date). Skip past markets. */
+      const primary = sortedByTradingClose.find((m) => {
+        const ts = m.expiration_time ?? m.close_time;
         if (!ts) return false;
         const deadline = new Date(ts);
         return deadline >= startOfTomorrow;
       });
       if (!primary) continue; // No market with deadline > today; skip event
       const lastMarket =
-        sortedByClose.length > 1 ? sortedByClose[sortedByClose.length - 1] : primary;
+        sortedByTradingClose.length > 1 ? sortedByTradingClose[sortedByTradingClose.length - 1] : primary;
       const volume = primary?.volume ?? 0;
       const liquidityRaw = primary?.liquidity_dollars ?? primary?.liquidity;
       const liquidity =
@@ -219,12 +219,12 @@ async function getEventsAndMarkets(
       if (yesVal !== undefined) outcomes.Yes = yesVal;
       if (noVal !== undefined) outcomes.No = noVal;
 
-      /** First market's end = 最近交易结束时间 (soonest deadline). */
+      /** First market's trading close time = 最近交易截止时间 (soonest "Otherwise, it closes by..."). */
       const createdAt =
-        primary?.close_time
-          ? new Date(primary.close_time)
-          : primary?.expiration_time
-            ? new Date(primary.expiration_time)
+        primary?.expiration_time
+          ? new Date(primary.expiration_time)
+          : primary?.close_time
+            ? new Date(primary.close_time)
             : undefined;
       /** Last market's end = 结束日期 (event fully resolves). */
       const endDate =

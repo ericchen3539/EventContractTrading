@@ -89,7 +89,7 @@ model EventCache {
   externalId  String
   title       String
   description String?              @db.Text
-  /** First market's trading end time (close_time or expiration_time). */
+  /** First market's trading close time (最近交易截止时间 from Timeline and payout). */
   createdAt   DateTime?
   endDate     DateTime?
   volume      Float?

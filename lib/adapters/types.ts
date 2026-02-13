@@ -24,7 +24,7 @@ export interface EventMarketInput {
   sectionExternalId: string;
   title: string;
   description?: string;
-  /** First market's trading end time (close_time or expiration_time). */
+  /** First market's trading close time (交易截止时间 from Timeline and payout). */
   createdAt?: Date;
   endDate?: Date;
   volume?: number;
