@@ -35,6 +35,8 @@ npx vercel login
 | `NEXTAUTH_SECRET` | 随机密钥（必填） | `openssl rand -base64 32` 生成 |
 | `GOOGLE_CLIENT_ID` | Google OAuth（Sign in with Google 必需） | 见下方「Google 登录配置」 |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth（同上） | 同上 |
+| `RESEND_API_KEY` | Resend API Key（邮箱验证、忘记密码必需） | 从 [resend.com](https://resend.com) 获取 |
+| `EMAIL_FROM` | 发件人邮箱（同上） | `noreply@ycjy.io`（需在 Resend 验证域名）。**若收不到邮件**：先用 `onboarding@resend.dev` 测试（无需验证），或在 [Resend Domains](https://resend.com/domains) 完成 SPF/DKIM 验证 |
 
 > **若出现 "Application error: a server-side exception"**：通常是 `NEXTAUTH_SECRET` 或 `NEXTAUTH_URL` 未配置。在 Vercel Dashboard → Project → Settings → Environment Variables 中确认 Production 环境已设置上述变量，然后 Redeploy。
 

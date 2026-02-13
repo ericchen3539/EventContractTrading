@@ -66,7 +66,9 @@ export async function POST(request: Request) {
       },
     });
 
+    console.error("[send-verification] calling sendVerificationEmail to", user.email);
     const result = await sendVerificationEmail(user.email, token);
+    console.error("[send-verification] result ok=" + result.ok + (result.error ? " error=" + result.error : ""));
     if (!result.ok) {
       return NextResponse.json(
         { error: result.error ?? "发送失败" },

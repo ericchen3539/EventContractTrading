@@ -28,18 +28,27 @@ export async function sendVerificationEmail(
   }
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const verifyUrl = `${baseUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
 
-  const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "noreply@resend.dev",
-    to,
-    subject: "验证您的邮箱",
-    html: buildVerificationEmailHtml(verifyUrl),
-  });
+  try {
+    const { data, error } = await resend.emails.send({
+      from,
+      to,
+      subject: "验证您的邮箱",
+      html: buildVerificationEmailHtml(verifyUrl),
+    });
 
-  if (error) {
-    return { ok: false, error: error.message };
+    if (error) {
+      console.error("[email] verification failed:", error.message, "to", to);
+      return { ok: false, error: error.message };
+    }
+    console.error("[email] verification sent id=" + (data?.id ?? "?") + " to=" + to);
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[email] verification threw:", msg);
+    return { ok: false, error: msg };
   }
-  return { ok: true };
 }
 
 /**
@@ -56,15 +65,23 @@ export async function sendPasswordResetEmail(
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-  const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "noreply@resend.dev",
-    to,
-    subject: "重置密码",
-    html: buildPasswordResetEmailHtml(resetUrl),
-  });
-
-  if (error) {
-    return { ok: false, error: error.message };
+  const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+  try {
+    const { data, error } = await resend.emails.send({
+      from,
+      to,
+      subject: "重置密码",
+      html: buildPasswordResetEmailHtml(resetUrl),
+    });
+    if (error) {
+      console.error("[email] password reset failed:", error.message, "to", to);
+      return { ok: false, error: error.message };
+    }
+    console.error("[email] password reset sent id=" + (data?.id ?? "?") + " to=" + to);
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[email] password reset threw:", msg);
+    return { ok: false, error: msg };
   }
-  return { ok: true };
 }
