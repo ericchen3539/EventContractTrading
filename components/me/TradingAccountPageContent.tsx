@@ -29,29 +29,72 @@ interface TradingData {
   settlements: KalshiSettlement[];
 }
 
+interface PaginatedTableProps<T> {
+  title: string;
+  items: T[];
+  columns: { key: string; header: string; render: (row: T) => React.ReactNode }[];
+  emptyMessage: string;
+  pageSize?: number;
+  selectable?: boolean;
+  getRowId?: (row: T) => string;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
+  headerActions?: React.ReactNode;
+}
+
 function PaginatedTable<T>({
   title,
   items,
   columns,
   emptyMessage,
   pageSize = PAGE_SIZE,
-}: {
-  title: string;
-  items: T[];
-  columns: { key: string; header: string; render: (row: T) => React.ReactNode }[];
-  emptyMessage: string;
-  pageSize?: number;
-}) {
+  selectable = false,
+  getRowId,
+  selectedIds = new Set(),
+  onSelectionChange,
+  headerActions,
+}: PaginatedTableProps<T>) {
   const [page, setPage] = useState(0);
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const start = page * pageSize;
   const pageItems = items.slice(start, start + pageSize);
 
+  const allIds = useMemo(
+    () => (selectable && getRowId ? new Set(items.map(getRowId)) : new Set<string>()),
+    [selectable, getRowId, items]
+  );
+  const allSelected =
+    allIds.size > 0 && allIds.size === selectedIds.size && [...allIds].every((id) => selectedIds.has(id));
+
+  const handleHeaderCheckbox = useCallback(() => {
+    if (!onSelectionChange) return;
+    if (allSelected) {
+      onSelectionChange(new Set());
+    } else {
+      onSelectionChange(new Set(allIds));
+    }
+  }, [onSelectionChange, allSelected, allIds]);
+
+  const handleRowCheckbox = useCallback(
+    (id: string) => {
+      if (!onSelectionChange) return;
+      const next = new Set(selectedIds);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      onSelectionChange(next);
+    },
+    [onSelectionChange, selectedIds]
+  );
+
   return (
     <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <h3 className="border-b border-slate-200 px-4 py-3 text-lg font-medium text-slate-800 dark:border-slate-700 dark:text-slate-200">
-        {title}
-      </h3>
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+        <h3 className="text-lg font-medium text-slate-800 dark:text-slate-200">{title}</h3>
+        {headerActions}
+      </div>
       {items.length === 0 ? (
         <p className="p-6 text-slate-500 dark:text-slate-400">{emptyMessage}</p>
       ) : (
@@ -60,6 +103,17 @@ function PaginatedTable<T>({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
+                  {selectable && (
+                    <th className="w-10 px-2 py-2 text-left">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={handleHeaderCheckbox}
+                        className="h-4 w-4 rounded border border-slate-300 dark:border-slate-600"
+                        aria-label="全选"
+                      />
+                    </th>
+                  )}
                   {columns.map((c) => (
                     <th
                       key={c.key}
@@ -71,21 +125,35 @@ function PaginatedTable<T>({
                 </tr>
               </thead>
               <tbody>
-                {pageItems.map((row, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-slate-100 dark:border-slate-800 last:border-0"
-                  >
-                    {columns.map((c) => (
-                      <td
-                        key={c.key}
-                        className="px-4 py-2 text-slate-900 dark:text-slate-100"
-                      >
-                        {c.render(row)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {pageItems.map((row, i) => {
+                  const rowId = selectable && getRowId ? getRowId(row) : "";
+                  return (
+                    <tr
+                      key={i}
+                      className="border-b border-slate-100 dark:border-slate-800 last:border-0"
+                    >
+                      {selectable && (
+                        <td className="w-10 px-2 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(rowId)}
+                            onChange={() => handleRowCheckbox(rowId)}
+                            className="h-4 w-4 rounded border border-slate-300 dark:border-slate-600"
+                            aria-label={`选择行 ${rowId}`}
+                          />
+                        </td>
+                      )}
+                      {columns.map((c) => (
+                        <td
+                          key={c.key}
+                          className="px-4 py-2 text-slate-900 dark:text-slate-100"
+                        >
+                          {c.render(row)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -144,6 +212,9 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
   const [data, setData] = useState<TradingData | null>(null);
   const [eventTickerToTitle, setEventTickerToTitle] = useState<Record<string, string>>({});
   const [associatingTicker, setAssociatingTicker] = useState<string | null>(null);
+  const [selectedEventTickers, setSelectedEventTickers] = useState<Set<string>>(new Set());
+  const [batchAssociating, setBatchAssociating] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
 
   const sitesWithApiKey = useMemo(
     () => sites.filter((s) => s.adapterKey === "kalshi" && s.hasApiKey),
@@ -175,7 +246,12 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
 
   useEffect(() => {
     setEventTickerToTitle({});
+    setSelectedEventTickers(new Set());
   }, [selectedSiteId]);
+
+  useEffect(() => {
+    setSelectedEventTickers(new Set());
+  }, [data]);
 
   const handleAssociateEvent = useCallback(
     async (eventTicker: string) => {
@@ -202,6 +278,43 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
     },
     [selectedSiteId]
   );
+
+  const handleBatchAssociate = useCallback(async () => {
+    if (!selectedSiteId || selectedEventTickers.size === 0) return;
+    setBatchAssociating(true);
+    const tickers = [...selectedEventTickers];
+    const total = tickers.length;
+    let successCount = 0;
+    let failCount = 0;
+    for (let i = 0; i < tickers.length; i++) {
+      setBatchProgress({ current: i + 1, total });
+      const eventTicker = tickers[i];
+      try {
+        const res = await fetch(`/api/sites/${selectedSiteId}/trading-data/associate-event`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventTicker }),
+        });
+        const json = await res.json();
+        if (res.ok) {
+          setEventTickerToTitle((prev) => ({ ...prev, [eventTicker]: json.title }));
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+    setBatchAssociating(false);
+    setBatchProgress(null);
+    setSelectedEventTickers(new Set());
+    if (failCount === 0) {
+      toast.success(`关联完成，成功 ${successCount} 条`);
+    } else {
+      toast.success(`关联完成，成功 ${successCount} 条，失败 ${failCount} 条`);
+    }
+  }, [selectedSiteId, selectedEventTickers]);
 
   return (
     <div className="space-y-6">
@@ -327,12 +440,36 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
             title="事件持仓"
             items={data.eventPositions}
             emptyMessage="暂无事件持仓"
+            selectable
+            getRowId={(r) => r.event_ticker ?? ""}
+            selectedIds={selectedEventTickers}
+            onSelectionChange={setSelectedEventTickers}
+            headerActions={
+              <button
+                type="button"
+                onClick={handleBatchAssociate}
+                disabled={
+                  selectedEventTickers.size === 0 ||
+                  batchAssociating ||
+                  !selectedSiteId
+                }
+                className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
+              >
+                {batchAssociating && batchProgress
+                  ? `关联中 ${batchProgress.current}/${batchProgress.total}…`
+                  : "全部关联"}
+              </button>
+            }
             columns={[
               {
                 key: "event",
                 header: "事件",
-                render: (r) =>
-                  eventTickerToTitle[r.event_ticker ?? ""] ?? r.event_ticker ?? "—",
+                render: (r) => r.event_ticker ?? "—",
+              },
+              {
+                key: "eventTitle",
+                header: "事件名称",
+                render: (r) => eventTickerToTitle[r.event_ticker ?? ""] ?? "—",
               },
               {
                 key: "associate",
@@ -343,7 +480,11 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
                     <button
                       type="button"
                       onClick={() => handleAssociateEvent(ticker)}
-                      disabled={!ticker || associatingTicker === ticker}
+                      disabled={
+                        !ticker ||
+                        associatingTicker === ticker ||
+                        batchAssociating
+                      }
                       className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
                     >
                       {associatingTicker === ticker ? "关联中…" : "关联"}
