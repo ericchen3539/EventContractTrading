@@ -102,7 +102,8 @@ function parseOtherwiseFromEarlyCloseCondition(text: string | undefined): string
  * Rule: settlement_ts (if settled) -> close_time + settlement_timer_seconds (if open).
  */
 function getSettlementDate(m: KalshiMarket): Date | undefined {
-  if (isValidIsoTimestamp(m.settlement_ts)) return new Date(m.settlement_ts);
+  const ts = m.settlement_ts;
+  if (ts && isValidIsoTimestamp(ts)) return new Date(ts);
   const closeTs = getTradingCloseTs(m);
   if (!closeTs) return undefined;
   const timerSec = m.settlement_timer_seconds;
