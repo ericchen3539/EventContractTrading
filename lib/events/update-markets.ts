@@ -4,13 +4,15 @@
  */
 import { Prisma } from "@prisma/client";
 import type { MarketInput } from "@/lib/adapters/types";
+import { isActiveStatus } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { getAdapter } from "@/lib/adapters";
 
-/** True if any semantic field (closeTime, tradingCloseTime, volume, liquidity, outcomes) differs. Used for DB update. */
+/** True if any semantic field (status, closeTime, tradingCloseTime, volume, liquidity, outcomes) differs. Used for DB update. */
 function hasMarketSemanticChanges(
   input: MarketInput,
   existing: {
+    status: string | null;
     closeTime: Date | null;
     tradingCloseTime: Date | null;
     volume: number | null;
@@ -18,6 +20,10 @@ function hasMarketSemanticChanges(
     outcomes: unknown;
   }
 ): boolean {
+  const inStatus = input.status ?? null;
+  const exStatus = existing.status ?? null;
+  if (inStatus !== exStatus) return true;
+
   const inClose = input.closeTime?.getTime() ?? null;
   const exClose = existing.closeTime?.getTime() ?? null;
   if (inClose !== exClose) return true;
@@ -188,6 +194,7 @@ export async function updateMarketsForEvent(
           sectionId: event.sectionId,
           externalId: m.externalId,
           title: m.title,
+          status: m.status ?? null,
           closeTime: m.closeTime ?? null,
           tradingCloseTime: m.tradingCloseTime ?? null,
           volume: m.volume ?? null,
@@ -208,6 +215,7 @@ export async function updateMarketsForEvent(
       newMarkets.push(created);
     } else if (
       hasMarketSemanticChanges(m, {
+        status: existingRecord.status,
         closeTime: existingRecord.closeTime,
         tradingCloseTime: existingRecord.tradingCloseTime,
         volume: existingRecord.volume,
@@ -219,6 +227,7 @@ export async function updateMarketsForEvent(
         where: { id: existingRecord.id },
         data: {
           title: m.title,
+          status: m.status ?? null,
           closeTime: m.closeTime ?? null,
           tradingCloseTime: m.tradingCloseTime ?? null,
           volume: m.volume ?? null,
@@ -249,11 +258,15 @@ export async function updateMarketsForEvent(
   });
 
   return {
-    newMarkets: sortedNew.map((m) => toPublicMarket(m, event.title)),
-    changedMarkets: sortedChanged.map(({ market, oldOutcomes }) => ({
-      ...toPublicMarket(market, event.title),
-      oldOutcomes,
-    })),
+    newMarkets: sortedNew
+      .filter((m) => isActiveStatus(m.status))
+      .map((m) => toPublicMarket(m, event.title)),
+    changedMarkets: sortedChanged
+      .filter(({ market }) => isActiveStatus(market.status))
+      .map(({ market, oldOutcomes }) => ({
+        ...toPublicMarket(market, event.title),
+        oldOutcomes,
+      })),
     adapterReturnedEmpty: markets.length === 0,
   };
 }

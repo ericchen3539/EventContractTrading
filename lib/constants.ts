@@ -1,5 +1,16 @@
-/** Max number of events that can be selected for batch operations. */
-export const MAX_SELECTED_EVENTS = 50;
+/**
+ * Status values considered active/open for events and markets.
+ * Per rule: only active/open items are shown in user tables.
+ */
+export const ACTIVE_STATUSES = ["open", "active"] as const;
 
-/** Max number of markets that can be selected for batch operations. */
+/** Mutable copy for Prisma where { in: [...] } which expects string[]. */
+export const ACTIVE_STATUSES_ARRAY: string[] = ["open", "active"];
+
+export function isActiveStatus(status: string | null | undefined): boolean {
+  if (!status) return false;
+  return ACTIVE_STATUSES.includes(status.toLowerCase() as (typeof ACTIVE_STATUSES)[number]);
+}
+
+export const MAX_SELECTED_EVENTS = 50;
 export const MAX_SELECTED_MARKETS = 50;

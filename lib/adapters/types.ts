@@ -24,6 +24,8 @@ export interface EventMarketInput {
   sectionExternalId: string;
   title: string;
   description?: string;
+  /** open/active = displayable; closed/settled = not shown in user tables. */
+  status?: string;
   /** First market's trading close time (交易截止时间 from Timeline and payout). */
   createdAt?: Date;
   endDate?: Date;
@@ -37,6 +39,8 @@ export interface EventMarketInput {
 export interface MarketInput {
   externalId: string;
   title: string;
+  /** open/active = displayable; closed/settled = not shown in user tables. */
+  status?: string;
   closeTime?: Date;
   /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). For Kalshi: expiration_time ?? close_time. */
   tradingCloseTime?: Date;

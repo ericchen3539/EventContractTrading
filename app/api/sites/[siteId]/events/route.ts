@@ -119,7 +119,13 @@ async function handleGet(
 
   if (sections.length === 0) {
     const cached = await prisma.eventCache.findMany({
-      where: { siteId },
+      where: {
+        siteId,
+        OR: [
+          { status: { in: ["open", "active"] } },
+          { status: null },
+        ],
+      },
       orderBy: { createdAt: "asc" },
     });
     return NextResponse.json({
@@ -184,6 +190,7 @@ async function handleGet(
               externalId: ev.externalId,
               title: ev.title,
               description: ev.description ?? null,
+              status: ev.status ?? null,
               createdAt: ev.createdAt ?? null,
               endDate: ev.endDate ?? null,
               volume: ev.volume ?? null,
@@ -205,6 +212,7 @@ async function handleGet(
             data: {
               title: ev.title,
               description: ev.description ?? null,
+              status: ev.status ?? null,
               createdAt: ev.createdAt ?? null,
               endDate: ev.endDate ?? null,
               volume: ev.volume ?? null,

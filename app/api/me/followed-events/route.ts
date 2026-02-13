@@ -8,6 +8,7 @@
  */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { isActiveStatus } from "@/lib/constants";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -63,7 +64,11 @@ export async function GET(request: Request) {
     });
 
     const events = rows
-      .filter((r) => r.eventCache != null)
+      .filter((r) => {
+        if (r.eventCache == null) return false;
+        const s = r.eventCache.status;
+        return s == null || isActiveStatus(s);
+      })
       .map((r) => {
         const ec = r.eventCache!;
         return {

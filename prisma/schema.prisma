@@ -89,6 +89,8 @@ model EventCache {
   externalId  String
   title       String
   description String?              @db.Text
+  /** open/active = displayable; closed/settled = not shown in user tables. */
+  status      String?
   /** First market's trading close time (最近交易截止时间 from Timeline and payout). */
   createdAt   DateTime?
   endDate     DateTime?
@@ -113,6 +115,8 @@ model Market {
   sectionId        String
   externalId       String
   title            String
+  /** open/active = displayable; closed/settled = not shown in user tables. */
+  status           String?
   closeTime        DateTime?
   /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). For Kalshi: expiration_time ?? close_time. */
   tradingCloseTime DateTime?

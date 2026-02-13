@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -91,16 +92,15 @@ async function handleGet(
   }
 
   const sectionIds = sections.map((s) => s.id);
-  const where: {
-    siteId: string;
-    sectionId: { in: string[] };
-    createdAt?: { lte: Date };
-  } = {
+  const daysParam = searchParams.get("days");
+  const where: Prisma.EventCacheWhereInput = {
     siteId,
     sectionId: { in: sectionIds },
+    OR: [
+      { status: { in: ["open", "active"] } },
+      { status: null },
+    ],
   };
-
-  const daysParam = searchParams.get("days");
   if (daysParam && daysParam !== "all") {
     const days = parseInt(daysParam, 10);
     if (days > 0) {

@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -93,29 +94,34 @@ async function handleGet(
   }
 
   const sectionIds = sections.map((s) => s.id);
-  const where: {
-    siteId: string;
-    sectionId: { in: string[] };
-    OR?: Array<
-      | { tradingCloseTime: { lte: Date } }
-      | { tradingCloseTime: null; closeTime: { lte: Date } }
-    >;
-  } = {
-    siteId,
-    sectionId: { in: sectionIds },
-  };
+  const andClauses: Prisma.MarketWhereInput[] = [
+    {
+      OR: [
+        { status: { in: ["open", "active"] } },
+        { status: null },
+      ],
+    },
+  ];
 
   const daysParam = searchParams.get("days");
   if (daysParam && daysParam !== "all") {
     const days = parseInt(daysParam, 10);
     if (days > 0) {
       const cutoff = new Date(Date.now() + days * 86400000);
-      where.OR = [
-        { tradingCloseTime: { lte: cutoff } },
-        { tradingCloseTime: null, closeTime: { lte: cutoff } },
-      ];
+      andClauses.push({
+        OR: [
+          { tradingCloseTime: { lte: cutoff } },
+          { tradingCloseTime: null, closeTime: { lte: cutoff } },
+        ],
+      });
     }
   }
+
+  const where: Prisma.MarketWhereInput = {
+    siteId,
+    sectionId: { in: sectionIds },
+    AND: andClauses,
+  };
 
   const markets = await prisma.market.findMany({
     where,

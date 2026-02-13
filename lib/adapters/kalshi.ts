@@ -234,6 +234,7 @@ async function getEventsAndMarkets(
         sectionExternalId: category,
         title: ev.title,
         description: ev.sub_title ?? undefined,
+        status: "open",
         createdAt,
         endDate: endDate ? new Date(endDate) : undefined,
         volume: typeof volume === "number" ? volume : undefined,
@@ -269,10 +270,8 @@ async function getMarketsForEvent(
     const marketsData = await fetchJson<{ markets?: KalshiMarket[] }>(marketsUrl);
     markets = marketsData.markets ?? [];
   }
-  const openMarkets = markets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
-
   const results: MarketInput[] = [];
-  for (const m of openMarkets) {
+  for (const m of markets) {
     if (!m.ticker) continue;
     const ts = m.close_time ?? m.expiration_time;
     /** Trading deadline from "Otherwise, it closes by..." in Timeline and payout. Prefer expiration_time. */
@@ -302,6 +301,7 @@ async function getMarketsForEvent(
     results.push({
       externalId: m.ticker,
       title: m.title ?? m.ticker,
+      status: m.status ?? undefined,
       closeTime,
       tradingCloseTime,
       volume: typeof volume === "number" ? volume : undefined,
