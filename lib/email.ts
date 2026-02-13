@@ -28,13 +28,14 @@ export async function sendVerificationEmail(
   }
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const verifyUrl = `${baseUrl}/verify-email?token=${encodeURIComponent(token)}`;
-  const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+  const fromAddr = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+  const from = fromAddr.includes("@") ? `Event Contract <${fromAddr}>` : fromAddr;
 
   try {
     const { data, error } = await resend.emails.send({
       from,
       to,
-      subject: "验证您的邮箱",
+      subject: "请确认您的邮箱地址",
       html: buildVerificationEmailHtml(verifyUrl),
     });
 
@@ -65,7 +66,8 @@ export async function sendPasswordResetEmail(
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-  const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+  const fromAddr = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
+  const from = fromAddr.includes("@") ? `Event Contract <${fromAddr}>` : fromAddr;
   try {
     const { data, error } = await resend.emails.send({
       from,

@@ -46,6 +46,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const recentSent = await prisma.verificationToken.findFirst({
+      where: {
+        identifier: user.email,
+        type: "email_verify",
+        createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+      },
+    });
+    if (recentSent) {
+      return NextResponse.json(
+        { error: "请 5 分钟后再试，避免邮件被误判为垃圾邮件" },
+        { status: 429 }
+      );
+    }
+
     await prisma.verificationToken.deleteMany({
       where: {
         identifier: user.email,
