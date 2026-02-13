@@ -30,6 +30,8 @@ export type MarketItem = {
   closeTime?: string;
   /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). Primary sort key. */
   nextTradingCloseTime?: string;
+  /** Projected payout date from Timeline and payout. */
+  settlementDate?: string;
   volume?: number;
   liquidity?: number;
   outcomes?: Record<string, number>;
@@ -304,6 +306,11 @@ export function MarketsTable({
         header: "交易截止时间",
         cell: ({ row }) =>
           formatTradingClose(row.original.nextTradingCloseTime ?? row.original.closeTime),
+      },
+      {
+        accessorKey: "settlementDate",
+        header: "结算日期",
+        cell: ({ row }) => formatDate(row.original.settlementDate),
       },
       {
         accessorKey: "volume",

@@ -50,6 +50,10 @@ interface KalshiMarket {
   /** Fallback when close_time is "After the outcome occurs" (Conditional Closing: "Otherwise, it closes by ..."). */
   latest_expiration_time?: string;
   expiration_time?: string;
+  /** Seconds after close_time until projected payout. Used to compute settlementDate when market is open. */
+  settlement_timer_seconds?: number;
+  /** Actual settlement timestamp when market is settled. Used for settlementDate when market is closed. */
+  settlement_ts?: string;
   /** Text containing "Otherwise, it closes by Feb 28, 2026 at 11:59pm EST" when close_time is conditional. */
   early_close_condition?: string;
   volume?: number;
@@ -91,6 +95,23 @@ function parseOtherwiseFromEarlyCloseCondition(text: string | undefined): string
   if (!m) return undefined;
   const d = new Date(m[1].trim());
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+/**
+ * Compute projected payout date (settlement date) from Kalshi market.
+ * Rule: settlement_ts (if settled) -> close_time + settlement_timer_seconds (if open).
+ */
+function getSettlementDate(m: KalshiMarket): Date | undefined {
+  if (isValidIsoTimestamp(m.settlement_ts)) return new Date(m.settlement_ts);
+  const closeTs = getTradingCloseTs(m);
+  if (!closeTs) return undefined;
+  const timerSec = m.settlement_timer_seconds;
+  if (typeof timerSec === "number" && timerSec >= 0) {
+    const d = new Date(closeTs);
+    d.setSeconds(d.getSeconds() + timerSec);
+    return d;
+  }
+  return undefined;
 }
 
 /**
@@ -333,6 +354,7 @@ async function getMarketsForEvent(
 
     const closeTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
     const nextTradingCloseTime = closeTime;
+    const settlementDate = getSettlementDate(m);
 
     results.push({
       externalId: m.ticker,
@@ -340,6 +362,7 @@ async function getMarketsForEvent(
       status: m.status ?? undefined,
       closeTime,
       nextTradingCloseTime,
+      settlementDate,
       volume: typeof volume === "number" ? volume : undefined,
       liquidity: typeof liquidity === "number" ? liquidity : undefined,
       outcomes: Object.keys(outcomes).length ? outcomes : undefined,
@@ -472,6 +495,7 @@ async function getMarketByTicker(
 
   const closeTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
   const nextTradingCloseTime = closeTime;
+  const settlementDate = getSettlementDate(m);
 
   const market: MarketInput = {
     externalId: m.ticker,
@@ -479,6 +503,7 @@ async function getMarketByTicker(
     status: m.status ?? undefined,
     closeTime,
     nextTradingCloseTime,
+    settlementDate,
     volume: typeof volume === "number" ? volume : undefined,
     liquidity: typeof liquidity === "number" ? liquidity : undefined,
     outcomes: Object.keys(outcomes).length ? outcomes : undefined,

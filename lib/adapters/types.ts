@@ -44,6 +44,8 @@ export interface MarketInput {
   closeTime?: Date;
   /** Trading deadline = "Market closes" in Timeline and payout. For Kalshi: close_time. */
   nextTradingCloseTime?: Date;
+  /** Projected payout date = "Projected payout" in Timeline and payout. For Kalshi: close_time + settlement_timer_seconds or settlement_ts. */
+  settlementDate?: Date;
   volume?: number;
   liquidity?: number;
   outcomes?: Record<string, number>;

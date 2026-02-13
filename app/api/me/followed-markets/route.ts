@@ -83,6 +83,7 @@ export async function GET(request: Request) {
           eventTitle: mc.eventCache?.title,
           closeTime: mc.closeTime?.toISOString() ?? undefined,
           nextTradingCloseTime: mc.nextTradingCloseTime?.toISOString() ?? undefined,
+          settlementDate: mc.settlementDate?.toISOString() ?? undefined,
           volume: mc.volume ?? undefined,
           liquidity: mc.liquidity ?? undefined,
           outcomes: mc.outcomes ?? undefined,

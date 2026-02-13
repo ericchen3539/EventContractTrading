@@ -26,6 +26,7 @@ function toPublicMarket(market: {
   title: string;
   closeTime: Date | null;
   nextTradingCloseTime: Date | null;
+  settlementDate: Date | null;
   volume: number | null;
   liquidity: number | null;
   outcomes: unknown;
@@ -42,6 +43,7 @@ function toPublicMarket(market: {
     eventTitle: market.eventCache?.title,
     closeTime: market.closeTime?.toISOString() ?? undefined,
     nextTradingCloseTime: market.nextTradingCloseTime?.toISOString() ?? undefined,
+    settlementDate: market.settlementDate?.toISOString() ?? undefined,
     volume: market.volume ?? undefined,
     liquidity: market.liquidity ?? undefined,
     outcomes: market.outcomes ?? undefined,
