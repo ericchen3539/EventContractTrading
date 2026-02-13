@@ -60,11 +60,11 @@ export const authOptions: NextAuthOptions = {
     },
     redirect: async ({ url, baseUrl }) => {
       if (url.startsWith("/")) {
-        const target = url === "/" ? "/me" : url;
+        const target = url === "/" ? "/me/events" : url;
         return `${baseUrl}${target}`;
       }
       if (new URL(url).origin === baseUrl) return url;
-      return `${baseUrl}/me`;
+      return `${baseUrl}/me/events`;
     },
     session: async ({ session, token }) => {
       if (session.user) {

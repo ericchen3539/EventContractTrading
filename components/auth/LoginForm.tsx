@@ -13,7 +13,7 @@ import { toast } from "sonner";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/me";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/me/events";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

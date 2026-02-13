@@ -11,7 +11,7 @@ export default async function AuthLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
-  if (session) redirect("/me");
+  if (session) redirect("/me/events");
   return (
     <div className="flex min-h-screen items-center justify-center bg-blue-50/40 px-4 dark:bg-slate-950">
       {children}
