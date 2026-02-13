@@ -166,7 +166,7 @@ function UpdateMarketsButton({
   );
 }
 
-/** Format ISO date string */
+/** Format ISO date string — date only, no time (per date-display-format rule) */
 function formatDate(iso?: string | null): string {
   if (!iso) return "—";
   try {
@@ -175,8 +175,6 @@ function formatDate(iso?: string | null): string {
       year: "numeric",
       month: "short",
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   } catch {
     return iso;
