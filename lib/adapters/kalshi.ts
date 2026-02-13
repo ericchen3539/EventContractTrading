@@ -398,9 +398,69 @@ async function getEventByTicker(
   };
 }
 
+/**
+ * Fetch a single market by ticker. Used for associating market positions with Market cache.
+ * Calls GET /markets/{ticker} (public API).
+ */
+async function getMarketByTicker(
+  _site: SiteInput,
+  marketTicker: string
+): Promise<{ market: MarketInput; eventTicker: string } | null> {
+  let data: { market?: KalshiMarket };
+  try {
+    data = await fetchJson<{ market?: KalshiMarket }>(
+      `${KALSHI_API_BASE}/markets/${encodeURIComponent(marketTicker)}`
+    );
+  } catch {
+    return null;
+  }
+
+  const m = data.market;
+  if (!m?.ticker || !m.event_ticker) return null;
+
+  const ts = m.close_time ?? m.expiration_time;
+  const tradingCloseTs = m.expiration_time ?? m.close_time;
+
+  const volume = m.volume ?? 0;
+  const liquidityRaw = m.liquidity_dollars ?? m.liquidity;
+  const liquidity =
+    typeof liquidityRaw === "string"
+      ? parseFloat(liquidityRaw)
+      : typeof liquidityRaw === "number"
+        ? liquidityRaw / 100
+        : undefined;
+
+  const yesPrice =
+    m.last_price_dollars ?? m.yes_ask_dollars ?? m.yes_bid_dollars;
+  const yesVal = yesPrice ? parseFloat(String(yesPrice)) : undefined;
+  const noVal = yesVal !== undefined ? 1 - yesVal : undefined;
+
+  const outcomes: Record<string, number> = {};
+  if (yesVal !== undefined) outcomes.Yes = yesVal;
+  if (noVal !== undefined) outcomes.No = noVal;
+
+  const closeTime = ts ? new Date(ts) : undefined;
+  const tradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
+
+  const market: MarketInput = {
+    externalId: m.ticker,
+    title: m.title ?? m.ticker,
+    status: m.status ?? undefined,
+    closeTime,
+    tradingCloseTime,
+    volume: typeof volume === "number" ? volume : undefined,
+    liquidity: typeof liquidity === "number" ? liquidity : undefined,
+    outcomes: Object.keys(outcomes).length ? outcomes : undefined,
+    raw: { market: m } as Record<string, unknown>,
+  };
+
+  return { market, eventTicker: m.event_ticker };
+}
+
 export const kalshiAdapter: Adapter = {
   getSections,
   getEventsAndMarkets,
   getMarketsForEvent,
   getEventByTicker,
+  getMarketByTicker,
 };

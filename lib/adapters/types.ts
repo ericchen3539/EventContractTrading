@@ -78,4 +78,13 @@ export interface Adapter {
     site: SiteInput,
     eventTicker: string
   ): Promise<EventMarketInput | null>;
+
+  /**
+   * Fetch a single market by ticker. Used for associating market positions with Market cache.
+   * Optional; Kalshi implements this.
+   */
+  getMarketByTicker?(
+    site: SiteInput,
+    marketTicker: string
+  ): Promise<{ market: MarketInput; eventTicker: string } | null>;
 }

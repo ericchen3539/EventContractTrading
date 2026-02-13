@@ -212,8 +212,11 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<TradingData | null>(null);
   const [eventTickerToTitle, setEventTickerToTitle] = useState<Record<string, string>>({});
+  const [marketTickerToTitle, setMarketTickerToTitle] = useState<Record<string, string>>({});
   const [associatingTicker, setAssociatingTicker] = useState<string | null>(null);
+  const [associatingMarketTicker, setAssociatingMarketTicker] = useState<string | null>(null);
   const [selectedEventTickers, setSelectedEventTickers] = useState<Set<string>>(new Set());
+  const [selectedMarketTickers, setSelectedMarketTickers] = useState<Set<string>>(new Set());
   const [batchAssociating, setBatchAssociating] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
 
@@ -240,6 +243,7 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
         }
         setData(json);
         setEventTickerToTitle((json.eventTickerToTitle as Record<string, string>) ?? {});
+        setMarketTickerToTitle((json.marketTickerToTitle as Record<string, string>) ?? {});
         toast.success("加载成功");
       } catch {
         toast.error("加载失败：网络错误，请稍后重试");
@@ -279,11 +283,14 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
 
   useEffect(() => {
     setEventTickerToTitle({});
+    setMarketTickerToTitle({});
     setSelectedEventTickers(new Set());
+    setSelectedMarketTickers(new Set());
   }, [selectedSiteId]);
 
   useEffect(() => {
     setSelectedEventTickers(new Set());
+    setSelectedMarketTickers(new Set());
   }, [data]);
 
   const handleAssociateEvent = useCallback(
@@ -348,6 +355,69 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
       toast.success(`关联完成，成功 ${successCount} 条，失败 ${failCount} 条`);
     }
   }, [selectedSiteId, selectedEventTickers]);
+
+  const handleAssociateMarket = useCallback(
+    async (marketTicker: string) => {
+      if (!selectedSiteId) return;
+      setAssociatingMarketTicker(marketTicker);
+      try {
+        const res = await fetch(`/api/sites/${selectedSiteId}/trading-data/associate-market`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ marketTicker }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          toast.error(json.error ?? "关联失败");
+          return;
+        }
+        setMarketTickerToTitle((prev) => ({ ...prev, [marketTicker]: json.title }));
+        toast.success("关联成功");
+      } catch {
+        toast.error("关联失败：网络错误，请稍后重试");
+      } finally {
+        setAssociatingMarketTicker(null);
+      }
+    },
+    [selectedSiteId]
+  );
+
+  const handleBatchAssociateMarket = useCallback(async () => {
+    if (!selectedSiteId || selectedMarketTickers.size === 0) return;
+    setBatchAssociating(true);
+    const tickers = [...selectedMarketTickers];
+    const total = tickers.length;
+    let successCount = 0;
+    let failCount = 0;
+    for (let i = 0; i < tickers.length; i++) {
+      setBatchProgress({ current: i + 1, total });
+      const marketTicker = tickers[i];
+      try {
+        const res = await fetch(`/api/sites/${selectedSiteId}/trading-data/associate-market`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ marketTicker }),
+        });
+        const json = await res.json();
+        if (res.ok) {
+          setMarketTickerToTitle((prev) => ({ ...prev, [marketTicker]: json.title }));
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+    setBatchAssociating(false);
+    setBatchProgress(null);
+    setSelectedMarketTickers(new Set());
+    if (failCount === 0) {
+      toast.success(`关联完成，成功 ${successCount} 条`);
+    } else {
+      toast.success(`关联完成，成功 ${successCount} 条，失败 ${failCount} 条`);
+    }
+  }, [selectedSiteId, selectedMarketTickers]);
 
   return (
     <div className="space-y-6">
@@ -435,11 +505,57 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
             title="市场持仓"
             items={data.marketPositions}
             emptyMessage="暂无市场持仓"
+            selectable
+            getRowId={(r) => r.ticker ?? ""}
+            selectedIds={selectedMarketTickers}
+            onSelectionChange={setSelectedMarketTickers}
+            headerActions={
+              <button
+                type="button"
+                onClick={handleBatchAssociateMarket}
+                disabled={
+                  selectedMarketTickers.size === 0 ||
+                  batchAssociating ||
+                  !selectedSiteId
+                }
+                className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
+              >
+                {batchAssociating && batchProgress
+                  ? `关联中 ${batchProgress.current}/${batchProgress.total}…`
+                  : "全部关联"}
+              </button>
+            }
             columns={[
               {
                 key: "ticker",
                 header: "市场",
                 render: (r) => r.ticker ?? "—",
+              },
+              {
+                key: "marketTitle",
+                header: "市场名称",
+                render: (r) => marketTickerToTitle[r.ticker ?? ""] ?? "—",
+              },
+              {
+                key: "associate",
+                header: "关联",
+                render: (r) => {
+                  const ticker = r.ticker ?? "";
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleAssociateMarket(ticker)}
+                      disabled={
+                        !ticker ||
+                        associatingMarketTicker === ticker ||
+                        batchAssociating
+                      }
+                      className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
+                    >
+                      {associatingMarketTicker === ticker ? "关联中…" : "关联"}
+                    </button>
+                  );
+                },
               },
               {
                 key: "position",

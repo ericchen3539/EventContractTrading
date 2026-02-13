@@ -80,7 +80,30 @@ export async function GET(
       eventTickerToTitle[c.externalId] = c.title;
     }
 
-    return NextResponse.json({ ...data, eventTickerToTitle });
+    const marketTickers = [
+      ...new Set(
+        (data.marketPositions ?? [])
+          .map((p) => p.ticker)
+          .filter((t): t is string => !!t)
+      ),
+    ];
+    const marketCached =
+      marketTickers.length > 0
+        ? await prisma.market.findMany({
+            where: { siteId, externalId: { in: marketTickers } },
+            select: { externalId: true, title: true },
+          })
+        : [];
+    const marketTickerToTitle: Record<string, string> = {};
+    for (const m of marketCached) {
+      marketTickerToTitle[m.externalId] = m.title;
+    }
+
+    return NextResponse.json({
+      ...data,
+      eventTickerToTitle,
+      marketTickerToTitle,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const apiBase = getKalshiApiBase(site.baseUrl);
