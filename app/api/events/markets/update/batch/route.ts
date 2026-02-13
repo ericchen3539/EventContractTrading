@@ -55,7 +55,9 @@ export async function PUT(request: Request) {
     for (let i = 0; i < authorizedIds.length; i += BATCH_CONCURRENCY) {
       const chunk = authorizedIds.slice(i, i + BATCH_CONCURRENCY);
       const results = await Promise.allSettled(
-        chunk.map((eventId) => updateMarketsForEvent(eventId))
+        chunk.map((eventId) =>
+          updateMarketsForEvent(eventId, session.user!.id)
+        )
       );
       for (const r of results) {
         if (r.status === "fulfilled") {

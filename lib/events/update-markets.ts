@@ -118,15 +118,29 @@ export type UpdateMarketsResult = {
 
 /**
  * Update markets for a single event. Caller must have verified the user owns the event's site.
+ * @param eventId - Event to update markets for
+ * @param userId - When provided, new markets get UserFollowedMarket with event's current attention level
  */
 export async function updateMarketsForEvent(
-  eventId: string
+  eventId: string,
+  userId?: string
 ): Promise<UpdateMarketsResult> {
   const event = await prisma.eventCache.findUnique({
     where: { id: eventId },
     include: { site: true },
   });
   if (!event) throw new Error("Event not found");
+
+  const eventAttentionLevel =
+    userId != null
+      ? (
+          await prisma.userFollowedEvent.findUnique({
+            where: {
+              userId_eventCacheId: { userId, eventCacheId: eventId },
+            },
+          })
+        )?.attentionLevel ?? 1
+      : undefined;
 
   const adapter = getAdapter(event.site.adapterKey);
   if (!adapter) throw new Error(`Unknown adapter: ${event.site.adapterKey}`);
@@ -173,6 +187,15 @@ export async function updateMarketsForEvent(
           raw: (m.raw ?? undefined) as Prisma.InputJsonValue,
         },
       });
+      if (userId != null && eventAttentionLevel != null) {
+        await prisma.userFollowedMarket.create({
+          data: {
+            userId,
+            marketId: created.id,
+            attentionLevel: eventAttentionLevel,
+          },
+        });
+      }
       newMarkets.push(created);
     } else if (
       hasMarketSemanticChanges(m, {

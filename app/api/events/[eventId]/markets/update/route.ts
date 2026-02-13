@@ -34,7 +34,7 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const result = await updateMarketsForEvent(eventId);
+    const result = await updateMarketsForEvent(eventId, session.user.id);
 
     return NextResponse.json({
       newMarkets: result.newMarkets,
