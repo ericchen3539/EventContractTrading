@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -14,6 +14,12 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/me/events";
+
+  useEffect(() => {
+    if (searchParams.get("verified") === "1") {
+      toast.success("邮箱验证成功");
+    }
+  }, [searchParams]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -87,6 +93,14 @@ export function LoginForm() {
             required
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
+          <p className="mt-1 text-right text-sm">
+            <Link
+              href="/forgot-password"
+              className="text-blue-600 hover:underline dark:text-blue-400"
+            >
+              忘记密码？
+            </Link>
+          </p>
         </div>
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

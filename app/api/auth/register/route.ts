@@ -1,12 +1,16 @@
 /**
  * Registration API: creates a new user with email/password (Credentials provider).
- * Bcrypt hashes the password before storing.
+ * Bcrypt hashes the password before storing. Sends verification email after registration.
  */
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { getSafeErrorMessage } from "@/lib/api-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sendVerificationEmail } from "@/lib/email";
+
+const VERIFY_TOKEN_EXPIRY_HOURS = 24;
 
 export async function POST(request: Request) {
   if (!checkRateLimit(request, "register")) {
@@ -63,6 +67,23 @@ export async function POST(request: Request) {
         password: hashedPassword,
       },
     });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expires = new Date();
+    expires.setHours(expires.getHours() + VERIFY_TOKEN_EXPIRY_HOURS);
+    await prisma.verificationToken.create({
+      data: {
+        identifier: trimEmail,
+        token,
+        type: "email_verify",
+        expires,
+      },
+    });
+
+    const emailResult = await sendVerificationEmail(trimEmail, token);
+    if (!emailResult.ok) {
+      console.error("[auth/register] verification email failed:", emailResult.error);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

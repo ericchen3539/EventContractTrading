@@ -14,6 +14,7 @@ export function DashboardNav() {
   const navLinks = [
     { href: "/me/events", label: "用户事件" },
     { href: "/me/markets", label: "用户市场" },
+    { href: "/me/account", label: "用户账号" },
     { href: "/sites", label: "站点管理" },
     { href: "/events", label: "事件更新" },
   ];
