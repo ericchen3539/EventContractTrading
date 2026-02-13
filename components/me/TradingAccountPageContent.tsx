@@ -376,7 +376,7 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
           <div className="flex items-end">
             <button
               type="button"
-              onClick={loadTradingData}
+              onClick={() => loadTradingData()}
               disabled={loading || !selectedSiteId}
               className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
             >
