@@ -71,7 +71,10 @@ export function SiteForm({ site }: SiteFormProps) {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errMsg = data.error ?? "请求失败";
+        const errMsg =
+          typeof data?.error === "string"
+            ? data.error
+            : res.statusText || "请求失败";
         setError(errMsg);
         toast.error(isEdit ? `保存失败：${errMsg}` : `添加失败：${errMsg}`);
         return;

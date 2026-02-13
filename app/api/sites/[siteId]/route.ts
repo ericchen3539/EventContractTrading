@@ -109,37 +109,45 @@ export async function PUT(
     }
     updates.adapterKey = body.adapterKey;
   }
-  if (body.loginUsername !== undefined) {
-    updates.loginUsername =
-      typeof body.loginUsername === "string" && body.loginUsername.trim()
-        ? encrypt(body.loginUsername.trim())
-        : null;
-  }
-  if (body.loginPassword !== undefined) {
-    updates.loginPassword =
-      typeof body.loginPassword === "string" && body.loginPassword
-        ? encrypt(body.loginPassword)
-        : null;
-  }
-  if (body.apiKeyId !== undefined) {
-    updates.apiKeyId =
-      typeof body.apiKeyId === "string" && body.apiKeyId.trim()
-        ? encrypt(body.apiKeyId.trim())
-        : null;
-  }
-  if (body.apiKeyPrivateKey !== undefined) {
-    updates.apiKeyPrivateKey =
-      typeof body.apiKeyPrivateKey === "string" && body.apiKeyPrivateKey.trim()
-        ? encrypt(body.apiKeyPrivateKey.trim())
-        : null;
-  }
+  try {
+    if (body.loginUsername !== undefined) {
+      updates.loginUsername =
+        typeof body.loginUsername === "string" && body.loginUsername.trim()
+          ? encrypt(body.loginUsername.trim())
+          : null;
+    }
+    if (body.loginPassword !== undefined) {
+      updates.loginPassword =
+        typeof body.loginPassword === "string" && body.loginPassword
+          ? encrypt(body.loginPassword)
+          : null;
+    }
+    if (body.apiKeyId !== undefined) {
+      updates.apiKeyId =
+        typeof body.apiKeyId === "string" && body.apiKeyId.trim()
+          ? encrypt(body.apiKeyId.trim())
+          : null;
+    }
+    if (body.apiKeyPrivateKey !== undefined) {
+      updates.apiKeyPrivateKey =
+        typeof body.apiKeyPrivateKey === "string" && body.apiKeyPrivateKey.trim()
+          ? encrypt(body.apiKeyPrivateKey.trim())
+          : null;
+    }
 
-  const updated = await prisma.site.update({
-    where: { id: siteId },
-    data: updates,
-  });
-
-  return NextResponse.json(toPublicSite(updated));
+    const updated = await prisma.site.update({
+      where: { id: siteId },
+      data: updates,
+    });
+    return NextResponse.json(toPublicSite(updated));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[sites] PUT error:", err);
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(
