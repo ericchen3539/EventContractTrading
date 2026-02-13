@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { MAX_SELECTED_MARKETS } from "@/lib/constants";
+import { formatDate, formatOutcomes, formatUsd } from "@/lib/format";
 import { CopyableText } from "@/components/ui/CopyableText";
 
 /** Market as returned by GET /api/sites/[siteId]/markets/cached or GET /api/me/followed-markets */
@@ -57,43 +58,6 @@ interface MarketsTableProps {
   onBatchAttentionChange?: (marketIds: string[], level: number) => void;
 }
 
-function formatOutcomes(outcomes?: Record<string, number>): string {
-  if (!outcomes || typeof outcomes !== "object") return "—";
-  const entries = Object.entries(outcomes);
-  if (entries.length === 0) return "—";
-  return entries
-    .map(([k, v]) => {
-      const pct = typeof v === "number" ? Math.round(v * 100) : 0;
-      return `${k}: ${pct}%`;
-    })
-    .join(" | ");
-}
-
-function formatUsd(value?: number | null): string {
-  if (value == null || typeof value !== "number") return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-/** Format ISO date string — date only, no time (per date-display-format rule) */
-function formatDate(iso?: string | null): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
-
 function AttentionCell({
   marketId,
   value,
@@ -108,8 +72,9 @@ function AttentionCell({
 
   const handleBlur = () => {
     if (pending == null) return;
-    const n = parseInt(pending, 10);
-    if (!Number.isNaN(n) && n >= 0) {
+    const parsed = parseInt(pending, 10);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
+      const n = Math.min(99, parsed);
       onAttentionChange(marketId, n);
     }
     setPending(null);
@@ -125,6 +90,7 @@ function AttentionCell({
     <input
       type="number"
       min={0}
+      max={99}
       step={1}
       value={displayValue}
       onChange={(e) => setPending(e.target.value)}
@@ -213,13 +179,16 @@ export function MarketsTable({
 
   const selectAllLimited = useCallback(
     (
-      table: { getFilteredRowModel?: () => { rows: { original: MarketItem }[] } },
-      currentSelection: RowSelectionState
+      table: {
+        getFilteredRowModel?: () => { rows: { original: MarketItem }[] };
+        getSelectedRowModel?: () => { rows: { original: MarketItem }[] };
+      }
     ) => {
       const rows = table?.getFilteredRowModel?.()?.rows ?? [];
       const ids = rows.slice(0, maxSelected).map((r) => (r.original as MarketItem).id);
-      const allSelected =
-        ids.length > 0 && ids.every((id) => currentSelection[id]);
+      const selectedRows = table?.getSelectedRowModel?.()?.rows ?? [];
+      const selectedIds = new Set(selectedRows.map((r) => (r.original as MarketItem).id));
+      const allSelected = ids.length > 0 && ids.every((id) => selectedIds.has(id));
       if (allSelected) {
         clearSelection();
         return;
@@ -256,7 +225,7 @@ export function MarketsTable({
                             table.getIsAllRowsSelected?.() ||
                             table.getIsSomeRowsSelected?.()
                           }
-                          onChange={() => selectAllLimited(table, rowSelection)}
+                          onChange={() => selectAllLimited(table)}
                           className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
                           aria-label="全选"
                         />
@@ -404,7 +373,6 @@ export function MarketsTable({
       enableSelectAll,
       maxSelected,
       selectAllLimited,
-      rowSelection,
     ]
   );
 

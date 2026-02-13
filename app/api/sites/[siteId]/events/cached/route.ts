@@ -9,41 +9,13 @@ import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { toPublicEvent } from "@/lib/api-transform";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 async function getSiteForUser(siteId: string, userId: string) {
   return prisma.site.findFirst({
     where: { id: siteId, userId },
   });
-}
-
-function toPublicEvent(event: {
-  id: string;
-  siteId: string;
-  sectionId: string;
-  externalId: string;
-  title: string;
-  description: string | null;
-  createdAt: Date | null;
-  endDate: Date | null;
-  volume: number | null;
-  liquidity: number | null;
-  outcomes: unknown;
-  fetchedAt: Date;
-}) {
-  return {
-    id: event.id,
-    siteId: event.siteId,
-    sectionId: event.sectionId,
-    externalId: event.externalId,
-    title: event.title,
-    description: event.description ?? undefined,
-    createdAt: event.createdAt?.toISOString() ?? undefined,
-    endDate: event.endDate?.toISOString() ?? undefined,
-    volume: event.volume ?? undefined,
-    liquidity: event.liquidity ?? undefined,
-    outcomes: event.outcomes ?? undefined,
-    fetchedAt: event.fetchedAt.toISOString(),
-  };
 }
 
 export async function GET(
@@ -53,7 +25,7 @@ export async function GET(
   try {
     return await handleGet(request, ctx);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[events/cached] Unhandled error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -102,8 +74,9 @@ async function handleGet(
     ],
   };
   if (daysParam && daysParam !== "all") {
-    const days = parseInt(daysParam, 10);
-    if (days > 0) {
+    const parsed = parseInt(daysParam, 10);
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      const days = Math.min(365, parsed);
       const cutoff = new Date(Date.now() + days * 86400000);
       where.createdAt = { lte: cutoff };
     }

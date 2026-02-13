@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getAdapter } from "@/lib/adapters";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 async function getSiteForUser(siteId: string, userId: string) {
   return prisma.site.findFirst({
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
     try {
       adapterSections = await adapter.getSections(siteInput);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Adapter fetch failed";
+      const msg = getSafeErrorMessage(err, "Adapter fetch failed");
       console.error("[sections] Adapter fetch failed:", { siteId, adapterKey: site.adapterKey, error: err });
       return NextResponse.json(
         { error: `Failed to fetch sections: ${msg}` },
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(sections.map(toPublicSection), { status: 201 });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[sections] POST unhandled error:", err);
     return NextResponse.json(
       { error: `Sync failed: ${msg}` },

@@ -11,6 +11,7 @@ import { getServerSession } from "next-auth";
 import { isActiveStatus } from "@/lib/constants";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 export async function GET(request: Request) {
   try {
@@ -97,7 +98,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(events);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[followed-events] GET error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

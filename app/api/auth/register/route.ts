@@ -5,8 +5,16 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { getSafeErrorMessage } from "@/lib/api-utils";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  if (!checkRateLimit(request, "register")) {
+    return NextResponse.json(
+      { error: "Too many registration attempts. Please try again later." },
+      { status: 429 }
+    );
+  }
   try {
     const body = await request.json();
     const { email, password, name } = body as {
@@ -59,10 +67,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[auth/register]", err);
-    const message =
-      process.env.NODE_ENV === "development" && err instanceof Error
-        ? err.message
-        : "Registration failed";
+    const message = getSafeErrorMessage(err, "Registration failed");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

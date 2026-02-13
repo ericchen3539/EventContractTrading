@@ -141,19 +141,22 @@ export async function updateMarketsForEvent(
 ): Promise<UpdateMarketsResult> {
   const event = await prisma.eventCache.findUnique({
     where: { id: eventId },
-    include: { site: true },
+    include: {
+      site: true,
+      ...(userId != null && {
+        followedBy: {
+          where: { userId },
+          select: { attentionLevel: true },
+          take: 1,
+        },
+      }),
+    },
   });
   if (!event) throw new Error("Event not found");
 
   const eventAttentionLevel =
     userId != null
-      ? (
-          await prisma.userFollowedEvent.findUnique({
-            where: {
-              userId_eventCacheId: { userId, eventCacheId: eventId },
-            },
-          })
-        )?.attentionLevel ?? 1
+      ? (event as { followedBy?: { attentionLevel: number }[] }).followedBy?.[0]?.attentionLevel ?? 1
       : undefined;
 
   const adapter = getAdapter(event.site.adapterKey);
@@ -183,68 +186,73 @@ export async function updateMarketsForEvent(
   });
   const existingMap = new Map(existing.map((m) => [m.externalId, m]));
 
-  for (const m of markets) {
-    const existingRecord = existingMap.get(m.externalId);
+  const TX_TIMEOUT_MS = 60_000;
 
-    if (!existingRecord) {
-      const created = await prisma.market.create({
-        data: {
-          eventCacheId: eventId,
-          siteId: event.siteId,
-          sectionId: event.sectionId,
-          externalId: m.externalId,
-          title: m.title,
-          status: m.status ?? null,
-          closeTime: m.closeTime ?? null,
-          tradingCloseTime: m.tradingCloseTime ?? null,
-          volume: m.volume ?? null,
-          liquidity: m.liquidity ?? null,
-          outcomes: (m.outcomes ?? undefined) as Prisma.InputJsonValue,
-          raw: (m.raw ?? undefined) as Prisma.InputJsonValue,
-        },
-      });
-      if (userId != null && eventAttentionLevel != null) {
-        await prisma.userFollowedMarket.create({
-          data: {
-            userId,
-            marketId: created.id,
-            attentionLevel: eventAttentionLevel,
-          },
-        });
+  await prisma.$transaction(
+    async (tx) => {
+      for (const m of markets) {
+        const existingRecord = existingMap.get(m.externalId);
+
+        if (!existingRecord) {
+          const created = await tx.market.create({
+            data: {
+              eventCacheId: eventId,
+              siteId: event.siteId,
+              sectionId: event.sectionId,
+              externalId: m.externalId,
+              title: m.title,
+              status: m.status ?? null,
+              closeTime: m.closeTime ?? null,
+              tradingCloseTime: m.tradingCloseTime ?? null,
+              volume: m.volume ?? null,
+              liquidity: m.liquidity ?? null,
+              outcomes: (m.outcomes ?? undefined) as Prisma.InputJsonValue,
+              raw: (m.raw ?? undefined) as Prisma.InputJsonValue,
+            },
+          });
+          if (userId != null && eventAttentionLevel != null) {
+            await tx.userFollowedMarket.create({
+              data: {
+                userId,
+                marketId: created.id,
+                attentionLevel: eventAttentionLevel,
+              },
+            });
+          }
+          newMarkets.push(created);
+        } else if (
+          hasMarketSemanticChanges(m, {
+            status: existingRecord.status,
+            closeTime: existingRecord.closeTime,
+            tradingCloseTime: existingRecord.tradingCloseTime,
+            volume: existingRecord.volume,
+            liquidity: existingRecord.liquidity,
+            outcomes: existingRecord.outcomes,
+          })
+        ) {
+          const updated = await tx.market.update({
+            where: { id: existingRecord.id },
+            data: {
+              title: m.title,
+              status: m.status ?? null,
+              closeTime: m.closeTime ?? null,
+              tradingCloseTime: m.tradingCloseTime ?? null,
+              volume: m.volume ?? null,
+              liquidity: m.liquidity ?? null,
+              outcomes: (m.outcomes ?? undefined) as Prisma.InputJsonValue,
+              raw: (m.raw ?? undefined) as Prisma.InputJsonValue,
+              fetchedAt: new Date(),
+            },
+          });
+          if (hasOutcomesChange(m, { outcomes: existingRecord.outcomes })) {
+            const oldOut = (existingRecord.outcomes as Record<string, number>) ?? {};
+            priceChangedMarkets.push({ market: updated, oldOutcomes: oldOut });
+          }
+        }
       }
-      newMarkets.push(created);
-    } else if (
-      hasMarketSemanticChanges(m, {
-        status: existingRecord.status,
-        closeTime: existingRecord.closeTime,
-        tradingCloseTime: existingRecord.tradingCloseTime,
-        volume: existingRecord.volume,
-        liquidity: existingRecord.liquidity,
-        outcomes: existingRecord.outcomes,
-      })
-    ) {
-      const updated = await prisma.market.update({
-        where: { id: existingRecord.id },
-        data: {
-          title: m.title,
-          status: m.status ?? null,
-          closeTime: m.closeTime ?? null,
-          tradingCloseTime: m.tradingCloseTime ?? null,
-          volume: m.volume ?? null,
-          liquidity: m.liquidity ?? null,
-          outcomes: (m.outcomes ?? undefined) as Prisma.InputJsonValue,
-          raw: (m.raw ?? undefined) as Prisma.InputJsonValue,
-          fetchedAt: new Date(),
-        },
-      });
-      if (
-        hasOutcomesChange(m, { outcomes: existingRecord.outcomes })
-      ) {
-        const oldOut = (existingRecord.outcomes as Record<string, number>) ?? {};
-        priceChangedMarkets.push({ market: updated, oldOutcomes: oldOut });
-      }
-    }
-  }
+    },
+    { timeout: TX_TIMEOUT_MS }
+  );
 
   const sortedNew = [...newMarkets].sort((a, b) => {
     const aT = a.tradingCloseTime?.getTime() ?? a.closeTime?.getTime() ?? Infinity;

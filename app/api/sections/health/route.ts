@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 const KALSHI_SERIES_URL = "https://api.elections.kalshi.com/trade-api/v2/series?category=Politics";
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, seriesCount: data.series.length });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
+    const msg = getSafeErrorMessage(err, "Unknown error");
     return NextResponse.json(
       { ok: false, error: `Failed to reach Kalshi API: ${msg}` },
       { status: 200 }

@@ -6,26 +6,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MeMarketsPageContent } from "@/components/me/MeMarketsPageContent";
+import { toPublicSite } from "@/lib/api-transform";
 import Link from "next/link";
-
-function toPublicSite(site: {
-  id: string;
-  name: string;
-  baseUrl: string;
-  adapterKey: string;
-  loginUsername: string | null;
-  loginPassword: string | null;
-  createdAt: Date;
-}) {
-  return {
-    id: site.id,
-    name: site.name,
-    baseUrl: site.baseUrl,
-    adapterKey: site.adapterKey,
-    hasCredentials: !!(site.loginUsername || site.loginPassword),
-    createdAt: site.createdAt.toISOString(),
-  };
-}
 
 export default async function MeMarketsPage() {
   const session = await getServerSession(authOptions);

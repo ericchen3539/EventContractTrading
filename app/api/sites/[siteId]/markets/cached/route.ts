@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 async function getSiteForUser(siteId: string, userId: string) {
   return prisma.site.findFirst({
@@ -55,7 +56,7 @@ export async function GET(
   try {
     return await handleGet(request, ctx);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[markets/cached] Unhandled error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

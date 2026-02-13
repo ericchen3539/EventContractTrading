@@ -8,6 +8,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { updateMarketsForEvent } from "@/lib/events/update-markets";
+import { MAX_SELECTED_EVENTS } from "@/lib/constants";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 const BATCH_CONCURRENCY = 3;
 
@@ -34,6 +36,12 @@ export async function PUT(request: Request) {
     if (eventIds.length === 0) {
       return NextResponse.json(
         { error: "eventIds array required and must not be empty" },
+        { status: 400 }
+      );
+    }
+    if (eventIds.length > MAX_SELECTED_EVENTS) {
+      return NextResponse.json(
+        { error: `At most ${MAX_SELECTED_EVENTS} eventIds per request` },
         { status: 400 }
       );
     }
@@ -82,7 +90,7 @@ export async function PUT(request: Request) {
       changedMarkets: allChanged,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[markets/update/batch] PUT error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

@@ -168,20 +168,24 @@ export function MePageContent({ sites }: MePageContentProps) {
     }
     if (prefs.daysPreset) setDaysFilterPreset(prefs.daysPreset);
     if (prefs.daysCustom != null) setDaysFilterCustom(prefs.daysCustom);
-    if (prefs.sectionIds && prefs.sectionIds.length > 0 && prefs.siteId) {
+    const siteId = prefs.siteId;
+    const sectionIds = prefs.sectionIds;
+    if (siteId && sectionIds && sectionIds.length > 0) {
       setSectionIdsBySite((prev) => ({
         ...prev,
-        [prefs.siteId!]: new Set(prefs.sectionIds!),
+        [siteId]: new Set(sectionIds),
       }));
     }
   }, [siteIds]);
 
   const daysFilter: number | "all" =
     daysFilterPreset === "custom"
-      ? daysFilterCustom
+      ? (Number.isFinite(daysFilterCustom) && daysFilterCustom >= 1
+          ? Math.min(365, Math.floor(daysFilterCustom))
+          : 7)
       : daysFilterPreset === "all"
         ? "all"
-        : parseInt(daysFilterPreset, 10);
+        : parseInt(daysFilterPreset, 10) || 7;
 
   const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
 
@@ -192,8 +196,8 @@ export function MePageContent({ sites }: MePageContentProps) {
       if (res.ok && data && typeof data === "object") {
         setBrowseAttentionMap(data as Record<string, number>);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn("[MePageContent] fetchBrowseAttentionMap failed:", err);
     }
   }, []);
 
@@ -208,8 +212,8 @@ export function MePageContent({ sites }: MePageContentProps) {
       if (res.ok && data && typeof data === "object") {
         setMarketAttentionMap(data as Record<string, number>);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn("[MePageContent] fetchMarketAttentionMap failed:", err);
     }
   }, []);
 
@@ -261,7 +265,6 @@ export function MePageContent({ sites }: MePageContentProps) {
             )
           );
           setBrowseAttentionMap((prev) => ({ ...prev, [eventId]: level }));
-          fetchFollowedEvents();
           toast.success(level === 0 ? "已设为不再关注" : `关注度已更新为 ${level}`);
         } else {
           const data = await res.json().catch(() => ({}));
@@ -272,7 +275,7 @@ export function MePageContent({ sites }: MePageContentProps) {
         toast.error("更新关注度失败：网络或服务器错误，请稍后重试");
       }
     },
-    [fetchFollowedEvents]
+    []
   );
 
   const handleBatchAttentionChange = useCallback(
@@ -294,7 +297,6 @@ export function MePageContent({ sites }: MePageContentProps) {
               eventIds.includes(e.id) ? { ...e, attentionLevel: level } : e
             )
           );
-          fetchFollowedEvents();
           toast.success(`已批量更新 ${eventIds.length} 个事件的关注度为 ${level}`);
         } else {
           const data = await res.json().catch(() => ({}));
@@ -305,7 +307,7 @@ export function MePageContent({ sites }: MePageContentProps) {
         toast.error("批量更新关注度失败：网络或服务器错误，请稍后重试");
       }
     },
-    [fetchFollowedEvents]
+    []
   );
 
   const handleMarketAttentionChange = useCallback(

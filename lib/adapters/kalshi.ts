@@ -90,9 +90,11 @@ async function fetchJson<T>(url: string): Promise<T> {
 
       if (res.status === 429) {
         const retryAfter = res.headers.get("Retry-After");
-        const waitMs = retryAfter
-          ? Math.min(parseInt(retryAfter, 10) * 1000, 30_000)
-          : RETRY_BASE_MS * Math.pow(2, attempt);
+        const parsed = retryAfter ? parseInt(retryAfter, 10) : NaN;
+        const waitMs =
+          Number.isNaN(parsed) || parsed <= 0
+            ? RETRY_BASE_MS * Math.pow(2, attempt)
+            : Math.min(parsed * 1000, 30_000);
         if (attempt < MAX_RETRIES) {
           await sleep(waitMs);
           continue;

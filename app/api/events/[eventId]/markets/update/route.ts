@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { updateMarketsForEvent } from "@/lib/events/update-markets";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 export async function PUT(
   _request: Request,
@@ -42,7 +43,7 @@ export async function PUT(
       adapterReturnedEmpty: result.adapterReturnedEmpty,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[markets/update] PUT error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

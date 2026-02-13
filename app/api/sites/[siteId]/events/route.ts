@@ -13,6 +13,8 @@ import type { EventMarketInput } from "@/lib/adapters/types";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getAdapter } from "@/lib/adapters";
+import { toPublicEvent } from "@/lib/api-transform";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 async function getSiteForUser(siteId: string, userId: string) {
   return prisma.site.findFirst({
@@ -37,36 +39,6 @@ function hasSemanticChanges(
   return false;
 }
 
-function toPublicEvent(event: {
-  id: string;
-  siteId: string;
-  sectionId: string;
-  externalId: string;
-  title: string;
-  description: string | null;
-  createdAt: Date | null;
-  endDate: Date | null;
-  volume: number | null;
-  liquidity: number | null;
-  outcomes: unknown;
-  fetchedAt: Date;
-}) {
-  return {
-    id: event.id,
-    siteId: event.siteId,
-    sectionId: event.sectionId,
-    externalId: event.externalId,
-    title: event.title,
-    description: event.description ?? undefined,
-    createdAt: event.createdAt?.toISOString() ?? undefined,
-    endDate: event.endDate?.toISOString() ?? undefined,
-    volume: event.volume ?? undefined,
-    liquidity: event.liquidity ?? undefined,
-    outcomes: event.outcomes ?? undefined,
-    fetchedAt: event.fetchedAt.toISOString(),
-  };
-}
-
 export async function GET(
   request: NextRequest,
   ctx: { params: Promise<{ siteId: string }> }
@@ -74,7 +46,7 @@ export async function GET(
   try {
     return await handleGet(request, ctx);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[events] Unhandled error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -147,7 +119,7 @@ async function handleGet(
   try {
     adapterEvents = await adapter.getEventsAndMarkets(siteInput, sectionExternalIds);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Adapter fetch failed";
+    const msg = getSafeErrorMessage(err, "Adapter fetch failed");
     console.error("[events] Adapter fetch failed:", {
       siteId,
       adapterKey: site.adapterKey,

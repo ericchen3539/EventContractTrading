@@ -7,29 +7,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { encrypt } from "@/lib/encryption";
+import { toPublicSite } from "@/lib/api-transform";
 
 const ALLOWED_ADAPTER_KEYS = ["kalshi"] as const;
-
-function toPublicSite(site: {
-  id: string;
-  userId: string;
-  name: string;
-  baseUrl: string;
-  adapterKey: string;
-  loginUsername: string | null;
-  loginPassword: string | null;
-  createdAt: Date;
-}) {
-  return {
-    id: site.id,
-    userId: site.userId,
-    name: site.name,
-    baseUrl: site.baseUrl,
-    adapterKey: site.adapterKey,
-    hasCredentials: !!(site.loginUsername || site.loginPassword),
-    createdAt: site.createdAt.toISOString(),
-  };
-}
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -73,6 +53,17 @@ export async function POST(request: NextRequest) {
   }
   if (!baseUrl) {
     return NextResponse.json({ error: "baseUrl is required" }, { status: 400 });
+  }
+  try {
+    const u = new URL(baseUrl);
+    if (!["http:", "https:"].includes(u.protocol)) {
+      return NextResponse.json(
+        { error: "baseUrl must use http or https protocol" },
+        { status: 400 }
+      );
+    }
+  } catch {
+    return NextResponse.json({ error: "baseUrl must be a valid URL" }, { status: 400 });
   }
   if (!ALLOWED_ADAPTER_KEYS.includes(adapterKey as (typeof ALLOWED_ADAPTER_KEYS)[number])) {
     return NextResponse.json(

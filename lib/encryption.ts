@@ -1,6 +1,7 @@
 /**
  * AES-256-GCM encryption for Site credentials (loginUsername, loginPassword).
- * Uses ENCRYPTION_KEY (32-byte hex) from env. If missing, returns plaintext (dev fallback).
+ * Uses ENCRYPTION_KEY (32-byte hex) from env.
+ * In production, throws if ENCRYPTION_KEY is missing. In dev, falls back to plaintext.
  */
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
@@ -8,6 +9,8 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 const KEY_LENGTH = 32;
+
+const isProduction = process.env.NODE_ENV === "production";
 
 function getKey(): Buffer | null {
   const hex = process.env.ENCRYPTION_KEY;
@@ -21,11 +24,16 @@ function getKey(): Buffer | null {
 
 /**
  * Encrypt plaintext. Returns base64(iv || ciphertext || tag).
- * If ENCRYPTION_KEY is missing, returns plaintext as-is (dev fallback).
+ * In production, throws if ENCRYPTION_KEY is missing. In dev, returns plaintext as fallback.
  */
 export function encrypt(plaintext: string): string {
   const key = getKey();
-  if (!key) return plaintext;
+  if (!key) {
+    if (isProduction) {
+      throw new Error("ENCRYPTION_KEY is required in production. Add it in environment variables.");
+    }
+    return plaintext;
+  }
 
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
@@ -39,11 +47,17 @@ export function encrypt(plaintext: string): string {
 
 /**
  * Decrypt ciphertext. Expects base64(iv || ciphertext || tag).
- * If ENCRYPTION_KEY is missing or decrypt fails (e.g. plaintext stored), returns input as-is.
+ * In production, throws if ENCRYPTION_KEY is missing. In dev, returns input as-is.
+ * On decrypt failure (e.g. plaintext stored), returns input as-is.
  */
 export function decrypt(ciphertext: string): string {
   const key = getKey();
-  if (!key) return ciphertext;
+  if (!key) {
+    if (isProduction) {
+      throw new Error("ENCRYPTION_KEY is required in production. Add it in environment variables.");
+    }
+    return ciphertext;
+  }
 
   try {
     const buf = Buffer.from(ciphertext, "base64");
@@ -57,13 +71,17 @@ export function decrypt(ciphertext: string): string {
     decipher.setAuthTag(tag);
     return decipher.update(encrypted) + decipher.final("utf8");
   } catch {
+    if (isProduction) {
+      throw new Error("Decryption failed: invalid ciphertext or key mismatch");
+    }
     return ciphertext;
   }
 }
 
 /**
  * Check if a stored value is encrypted (base64 of iv+ct+tag).
- * Heuristic: encrypted values are base64 and have minimum length.
+ * Heuristic only: checks base64 decode length; may have false positives/negatives.
+ * Use for backward compatibility with legacy plaintext-stored data only.
  */
 export function isEncrypted(value: string): boolean {
   if (!value || value.length < 44) return false;

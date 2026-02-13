@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getSafeErrorMessage } from "@/lib/api-utils";
 
 function isValidAttentionLevel(v: unknown): v is number {
   return (
@@ -77,7 +78,7 @@ export async function PUT(
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const msg = getSafeErrorMessage(err);
     console.error("[market attention] PUT error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
