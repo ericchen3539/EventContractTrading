@@ -47,7 +47,11 @@ interface KalshiMarket {
   status: string;
   created_time?: string;
   close_time?: string;
+  /** Fallback when close_time is "After the outcome occurs" (Conditional Closing: "Otherwise, it closes by ..."). */
+  latest_expiration_time?: string;
   expiration_time?: string;
+  /** Text containing "Otherwise, it closes by Feb 28, 2026 at 11:59pm EST" when close_time is conditional. */
+  early_close_condition?: string;
   volume?: number;
   volume_fp?: string;
   liquidity?: number;
@@ -67,6 +71,40 @@ interface KalshiSeriesResponse {
 const FETCH_TIMEOUT_MS = 15_000;
 /** Delay between paginated requests to avoid 429 (Basic tier ~20 req/s). */
 const REQUEST_DELAY_MS = 80;
+
+/** True if s parses to a valid Date (ISO or similar). Rejects "After the outcome occurs" etc. */
+function isValidIsoTimestamp(s: string | undefined): boolean {
+  if (!s || typeof s !== "string") return false;
+  const d = new Date(s);
+  return !Number.isNaN(d.getTime());
+}
+
+/**
+ * Parse "Otherwise, it closes by Feb 28, 2026 at 11:59pm EST" from early_close_condition.
+ * Returns ISO string if parseable, else undefined.
+ */
+function parseOtherwiseFromEarlyCloseCondition(text: string | undefined): string | undefined {
+  if (!text || typeof text !== "string") return undefined;
+  const m = text.match(
+    /otherwise[,\s]+(?:it\s+closes?\s+by\s+)?([A-Za-z]+\s+\d{1,2},?\s+\d{4}\s+at\s+[\d:]+(?:\s*(?:am|pm))?\s*(?:EST|EDT|PST|PDT|UTC|CST|CDT|MST|MDT)?)/i
+  );
+  if (!m) return undefined;
+  const d = new Date(m[1].trim());
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+/**
+ * Extract trading close time per rule: close_time (if valid) -> latest_expiration_time (otherwise fallback) -> expiration_time.
+ * When close_time is "After the outcome occurs", use latest_expiration_time or parse from early_close_condition.
+ */
+function getTradingCloseTs(m: KalshiMarket): string | undefined {
+  if (isValidIsoTimestamp(m.close_time)) return m.close_time;
+  if (isValidIsoTimestamp(m.latest_expiration_time)) return m.latest_expiration_time;
+  const otherwiseTs = parseOtherwiseFromEarlyCloseCondition(m.early_close_condition);
+  if (otherwiseTs) return otherwiseTs;
+  if (isValidIsoTimestamp(m.expiration_time)) return m.expiration_time;
+  return undefined;
+}
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
 
@@ -184,18 +222,17 @@ async function getEventsAndMarkets(
       if (!category || !categorySet.has(category)) continue;
 
       const allMarkets = ev.markets ?? [];
-      /** First market = soonest trading close time. Kalshi: close_time = "Market closes" (trading deadline). */
+      /** First market = soonest trading close time. Priority: close_time -> latest_expiration_time (otherwise) -> expiration_time. */
       const openMarkets = allMarkets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
-      /** Sort: fixed dates first (asc), then "After the outcome occurs" (no close_time) last. */
       const SORT_AFTER_OUTCOME = "\uFFFF";
       const sortedByTradingClose = [...openMarkets].sort((a, b) => {
-        const aTs = a.close_time ?? a.expiration_time ?? SORT_AFTER_OUTCOME;
-        const bTs = b.close_time ?? b.expiration_time ?? SORT_AFTER_OUTCOME;
+        const aTs = getTradingCloseTs(a) ?? SORT_AFTER_OUTCOME;
+        const bTs = getTradingCloseTs(b) ?? SORT_AFTER_OUTCOME;
         return aTs.localeCompare(bTs);
       });
-      /** Primary: soonest market. Include "After the outcome occurs" (no ts) as open. */
+      /** Primary: soonest market. Include "After the outcome occurs" (no valid ts) as open. */
       const primary = sortedByTradingClose.find((m) => {
-        const ts = m.close_time ?? m.expiration_time;
+        const ts = getTradingCloseTs(m);
         if (!ts) return true; // "After the outcome occurs" = still open
         const deadline = new Date(ts);
         return deadline >= startOfTomorrow;
@@ -223,16 +260,12 @@ async function getEventsAndMarkets(
       if (yesVal !== undefined) outcomes.Yes = yesVal;
       if (noVal !== undefined) outcomes.No = noVal;
 
-      /** First market's trading close time = 最近交易截止时间 ("Market closes" in Timeline and payout). */
-      const nextTradingCloseTime =
-        primary?.close_time
-          ? new Date(primary.close_time)
-          : primary?.expiration_time
-            ? new Date(primary.expiration_time)
-            : undefined;
+      /** First market's trading close time = 最近交易截止时间. Priority: close_time -> latest_expiration_time -> expiration_time. */
+      const primaryCloseTs = primary ? getTradingCloseTs(primary) : undefined;
+      const nextTradingCloseTime = primaryCloseTs ? new Date(primaryCloseTs) : undefined;
       /** Last market's end = 结束日期 (event fully resolves). */
-      const endDate =
-        lastMarket?.close_time ?? lastMarket?.expiration_time ?? ev.strike_date;
+      const lastCloseTs = lastMarket ? getTradingCloseTs(lastMarket) : undefined;
+      const endDate = lastCloseTs ?? ev.strike_date;
       results.push({
         externalId: ev.event_ticker,
         sectionExternalId: category,
@@ -277,9 +310,8 @@ async function getMarketsForEvent(
   const results: MarketInput[] = [];
   for (const m of markets) {
     if (!m.ticker) continue;
-    const ts = m.close_time ?? m.expiration_time;
-    /** Trading deadline = "Market closes" in Timeline and payout. Kalshi: close_time. */
-    const tradingCloseTs = m.close_time ?? m.expiration_time;
+    /** Trading deadline. Priority: close_time -> latest_expiration_time (otherwise) -> expiration_time. */
+    const tradingCloseTs = getTradingCloseTs(m);
 
     const volume = m.volume ?? 0;
     const liquidityRaw = m.liquidity_dollars ?? m.liquidity;
@@ -299,8 +331,8 @@ async function getMarketsForEvent(
     if (yesVal !== undefined) outcomes.Yes = yesVal;
     if (noVal !== undefined) outcomes.No = noVal;
 
-    const closeTime = ts ? new Date(ts) : undefined;
-    const nextTradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
+    const closeTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
+    const nextTradingCloseTime = closeTime;
 
     results.push({
       externalId: m.ticker,
@@ -350,8 +382,8 @@ async function getEventByTicker(
   const openMarkets = markets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
   const SORT_AFTER_OUTCOME = "\uFFFF";
   const sortedByTradingClose = [...(openMarkets.length ? openMarkets : markets)].sort((a, b) => {
-    const aTs = a.close_time ?? a.expiration_time ?? SORT_AFTER_OUTCOME;
-    const bTs = b.close_time ?? b.expiration_time ?? SORT_AFTER_OUTCOME;
+    const aTs = getTradingCloseTs(a) ?? SORT_AFTER_OUTCOME;
+    const bTs = getTradingCloseTs(b) ?? SORT_AFTER_OUTCOME;
     return aTs.localeCompare(bTs);
   });
   const primary = sortedByTradingClose[0];
@@ -375,14 +407,10 @@ async function getEventByTicker(
   if (yesVal !== undefined) outcomes.Yes = yesVal;
   if (noVal !== undefined) outcomes.No = noVal;
 
-  const nextTradingCloseTime =
-    primary?.close_time
-      ? new Date(primary.close_time)
-      : primary?.expiration_time
-        ? new Date(primary.expiration_time)
-        : undefined;
-  const endDate =
-    lastMarket?.close_time ?? lastMarket?.expiration_time ?? ev.strike_date;
+  const primaryCloseTs = primary ? getTradingCloseTs(primary) : undefined;
+  const nextTradingCloseTime = primaryCloseTs ? new Date(primaryCloseTs) : undefined;
+  const lastCloseTs = lastMarket ? getTradingCloseTs(lastMarket) : undefined;
+  const endDate = lastCloseTs ?? ev.strike_date;
 
   const category = ev.category ?? "World";
 
@@ -421,8 +449,8 @@ async function getMarketByTicker(
   const m = data.market;
   if (!m?.ticker || !m.event_ticker) return null;
 
-  const ts = m.close_time ?? m.expiration_time;
-  const tradingCloseTs = m.close_time ?? m.expiration_time;
+  /** Priority: close_time -> latest_expiration_time (otherwise) -> expiration_time. */
+  const tradingCloseTs = getTradingCloseTs(m);
 
   const volume = m.volume ?? 0;
   const liquidityRaw = m.liquidity_dollars ?? m.liquidity;
@@ -442,8 +470,8 @@ async function getMarketByTicker(
   if (yesVal !== undefined) outcomes.Yes = yesVal;
   if (noVal !== undefined) outcomes.No = noVal;
 
-  const closeTime = ts ? new Date(ts) : undefined;
-  const nextTradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
+  const closeTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
+  const nextTradingCloseTime = closeTime;
 
   const market: MarketInput = {
     externalId: m.ticker,
