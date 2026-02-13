@@ -15,6 +15,7 @@ export type SiteFormValues = {
   baseUrl: string;
   adapterKey: string;
   hasCredentials?: boolean;
+  hasApiKey?: boolean;
 };
 
 const ADAPTER_OPTIONS = [
@@ -38,6 +39,8 @@ export function SiteForm({ site }: SiteFormProps) {
   const [adapterKey, setAdapterKey] = useState(site?.adapterKey ?? "kalshi");
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [apiKeyId, setApiKeyId] = useState("");
+  const [apiKeyPrivateKey, setApiKeyPrivateKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -53,6 +56,10 @@ export function SiteForm({ site }: SiteFormProps) {
       };
       if (loginUsername.trim()) body.loginUsername = loginUsername.trim();
       if (loginPassword) body.loginPassword = loginPassword;
+      if (adapterKey === "kalshi") {
+        if (apiKeyId.trim()) body.apiKeyId = apiKeyId.trim();
+        if (apiKeyPrivateKey.trim()) body.apiKeyPrivateKey = apiKeyPrivateKey.trim();
+      }
 
       const url = isEdit ? `/api/sites/${site!.id}` : "/api/sites";
       const method = isEdit ? "PUT" : "POST";
@@ -170,6 +177,52 @@ export function SiteForm({ site }: SiteFormProps) {
             placeholder={site?.hasCredentials ? "留空则不修改" : ""}
           />
         </div>
+        {adapterKey === "kalshi" && (
+          <>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <p className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+                Kalshi 交易凭证（用于获取 Portfolio、持仓等）
+              </p>
+              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                在 Kalshi 账户 → 账户与安全 → API Keys 中创建密钥，保存 API Key ID 和私钥（.key 文件内容）。
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label
+                    htmlFor="apiKeyId"
+                    className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    API Key ID（可选）
+                  </label>
+                  <input
+                    id="apiKeyId"
+                    type="text"
+                    value={apiKeyId}
+                    onChange={(e) => setApiKeyId(e.target.value)}
+                    className={INPUT_CLASS}
+                    placeholder={site?.hasApiKey ? "留空则不修改" : "例如：a952bcbe-ec3b-4b5b-b8f9-11dae589608c"}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="apiKeyPrivateKey"
+                    className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    私钥 PEM（可选）
+                  </label>
+                  <textarea
+                    id="apiKeyPrivateKey"
+                    value={apiKeyPrivateKey}
+                    onChange={(e) => setApiKeyPrivateKey(e.target.value)}
+                    rows={4}
+                    className={INPUT_CLASS + " font-mono text-sm"}
+                    placeholder={site?.hasApiKey ? "留空则不修改" : "粘贴 .key 文件内容（PEM 格式）"}
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         )}

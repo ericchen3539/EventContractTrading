@@ -10,6 +10,8 @@ export type PublicSite = {
   baseUrl: string;
   adapterKey: string;
   hasCredentials: boolean;
+  /** True when apiKeyId and apiKeyPrivateKey are set (Kalshi trading data). */
+  hasApiKey: boolean;
   createdAt: string;
 };
 
@@ -19,8 +21,10 @@ export function toPublicSite(site: {
   name: string;
   baseUrl: string;
   adapterKey: string;
-  loginUsername: string | null;
-  loginPassword: string | null;
+  loginUsername?: string | null;
+  loginPassword?: string | null;
+  apiKeyId?: string | null;
+  apiKeyPrivateKey?: string | null;
   createdAt: Date;
 }): PublicSite {
   return {
@@ -29,7 +33,13 @@ export function toPublicSite(site: {
     name: site.name,
     baseUrl: site.baseUrl,
     adapterKey: site.adapterKey,
-    hasCredentials: !!(site.loginUsername || site.loginPassword),
+    hasCredentials: !!(
+      site.loginUsername ||
+      site.loginPassword ||
+      site.apiKeyId ||
+      site.apiKeyPrivateKey
+    ),
+    hasApiKey: !!(site.apiKeyId && site.apiKeyPrivateKey),
     createdAt: site.createdAt.toISOString(),
   };
 }

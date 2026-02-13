@@ -30,7 +30,13 @@ export default async function EditSitePage({
     name: site.name,
     baseUrl: site.baseUrl,
     adapterKey: site.adapterKey,
-    hasCredentials: !!(site.loginUsername || site.loginPassword),
+    hasCredentials: !!(
+      site.loginUsername ||
+      site.loginPassword ||
+      site.apiKeyId ||
+      site.apiKeyPrivateKey
+    ),
+    hasApiKey: !!(site.apiKeyId && site.apiKeyPrivateKey),
   };
 
   return (

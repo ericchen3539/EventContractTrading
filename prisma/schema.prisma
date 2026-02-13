@@ -52,14 +52,18 @@ model Session {
 }
 
 model Site {
-  id            String       @id @default(cuid())
-  userId        String
-  name          String
-  baseUrl       String
-  adapterKey    String
-  loginUsername String?
-  loginPassword String?
-  createdAt     DateTime     @default(now())
+  id                String       @id @default(cuid())
+  userId            String
+  name              String
+  baseUrl           String
+  adapterKey        String
+  loginUsername     String?
+  loginPassword     String?
+  /** Kalshi API Key ID (encrypted). Used when adapterKey=kalshi for authenticated requests. */
+  apiKeyId          String?
+  /** Kalshi private key PEM (encrypted). Used with apiKeyId for RSA-PSS signature. */
+  apiKeyPrivateKey  String?      @db.Text
+  createdAt         DateTime     @default(now())
   sections      Section[]
   eventCaches   EventCache[]
   markets       Market[]

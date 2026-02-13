@@ -27,6 +27,17 @@ export function formatUsd(value?: number | null): string {
   }).format(value);
 }
 
+/** Format cents as USD (e.g. Kalshi API returns balance in cents) */
+export function formatCents(value?: number | null): string {
+  if (value == null || typeof value !== "number") return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value / 100);
+}
+
 /** Format ISO date string — date only, no time (per date-display-format rule) */
 export function formatDate(iso?: string | null): string {
   if (!iso) return "—";

@@ -56,6 +56,8 @@ export async function PUT(
     adapterKey?: string;
     loginUsername?: string;
     loginPassword?: string;
+    apiKeyId?: string;
+    apiKeyPrivateKey?: string;
   };
   try {
     body = await request.json();
@@ -69,6 +71,8 @@ export async function PUT(
     adapterKey?: string;
     loginUsername?: string | null;
     loginPassword?: string | null;
+    apiKeyId?: string | null;
+    apiKeyPrivateKey?: string | null;
   } = {};
 
   if (typeof body.name === "string") {
@@ -115,6 +119,18 @@ export async function PUT(
     updates.loginPassword =
       typeof body.loginPassword === "string" && body.loginPassword
         ? encrypt(body.loginPassword)
+        : null;
+  }
+  if (body.apiKeyId !== undefined) {
+    updates.apiKeyId =
+      typeof body.apiKeyId === "string" && body.apiKeyId.trim()
+        ? encrypt(body.apiKeyId.trim())
+        : null;
+  }
+  if (body.apiKeyPrivateKey !== undefined) {
+    updates.apiKeyPrivateKey =
+      typeof body.apiKeyPrivateKey === "string" && body.apiKeyPrivateKey.trim()
+        ? encrypt(body.apiKeyPrivateKey.trim())
         : null;
   }
 

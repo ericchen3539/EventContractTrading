@@ -37,6 +37,8 @@ export async function POST(request: NextRequest) {
     adapterKey?: string;
     loginUsername?: string;
     loginPassword?: string;
+    apiKeyId?: string;
+    apiKeyPrivateKey?: string;
   };
   try {
     body = await request.json();
@@ -76,6 +78,10 @@ export async function POST(request: NextRequest) {
     typeof body.loginUsername === "string" ? body.loginUsername.trim() || null : null;
   const loginPassword =
     typeof body.loginPassword === "string" ? body.loginPassword || null : null;
+  const apiKeyId =
+    typeof body.apiKeyId === "string" ? body.apiKeyId.trim() || null : null;
+  const apiKeyPrivateKey =
+    typeof body.apiKeyPrivateKey === "string" ? body.apiKeyPrivateKey.trim() || null : null;
 
   const site = await prisma.site.create({
     data: {
@@ -85,6 +91,8 @@ export async function POST(request: NextRequest) {
       adapterKey,
       loginUsername: loginUsername ? encrypt(loginUsername) : null,
       loginPassword: loginPassword ? encrypt(loginPassword) : null,
+      apiKeyId: apiKeyId ? encrypt(apiKeyId) : null,
+      apiKeyPrivateKey: apiKeyPrivateKey ? encrypt(apiKeyPrivateKey) : null,
     },
   });
 
