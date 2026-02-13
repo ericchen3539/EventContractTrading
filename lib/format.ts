@@ -1,6 +1,6 @@
 /**
  * Shared formatting utilities for events and markets display.
- * Per date-display-format rule: dates show only date part, no time.
+ * Per date-display-format rule: dates show date and time (minutes), no seconds.
  */
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -38,15 +38,17 @@ export function formatCents(value?: number | null): string {
   }).format(value / 100);
 }
 
-/** Format ISO date string — date only, no time (per date-display-format rule) */
+/** Format ISO date string — date and time (minutes), no seconds (per date-display-format rule) */
 export function formatDate(iso?: string | null): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
+    return d.toLocaleString(undefined, {
       year: "numeric",
       month: "short",
       day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     });
   } catch {
     return iso;
