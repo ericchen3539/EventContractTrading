@@ -1,0 +1,100 @@
+/**
+ * GET /api/me/followed-markets
+ * Returns markets for the current user's followed markets.
+ * Query params:
+ *   - minAttention: show markets with attentionLevel >= value (default 1)
+ *   - unfollowed: when "true", show only attentionLevel === 0
+ *   - mode: "top" = show only markets with attentionLevel === max
+ */
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const minAttentionParam = searchParams.get("minAttention");
+    const showUnfollowed = searchParams.get("unfollowed") === "true";
+    const mode = searchParams.get("mode"); // "top" = 我最关注
+
+    type WhereClause = {
+      userId: string;
+      attentionLevel?: number | { gte: number };
+    };
+    let whereClause: WhereClause = {
+      userId: session.user.id,
+    };
+
+    if (showUnfollowed) {
+      whereClause.attentionLevel = 0;
+    } else if (mode === "top") {
+      const maxRow = await prisma.userFollowedMarket.aggregate({
+        where: { userId: session.user.id },
+        _max: { attentionLevel: true },
+      });
+      const maxLevel = maxRow._max.attentionLevel ?? 0;
+      whereClause.attentionLevel = maxLevel;
+    } else {
+      const minAttention =
+        minAttentionParam != null && minAttentionParam !== ""
+          ? parseInt(minAttentionParam, 10)
+          : 1;
+      if (!Number.isNaN(minAttention) && minAttention >= 0) {
+        whereClause.attentionLevel = { gte: minAttention };
+      }
+    }
+
+    const rows = await prisma.userFollowedMarket.findMany({
+      where: whereClause,
+      include: {
+        marketCache: {
+          include: {
+            site: { select: { name: true } },
+            section: { select: { name: true } },
+            eventCache: { select: { title: true } },
+          },
+        },
+      },
+    });
+
+    const markets = rows
+      .filter((r) => r.marketCache != null)
+      .map((r) => {
+        const mc = r.marketCache!;
+        return {
+          id: mc.id,
+          eventCacheId: mc.eventCacheId,
+          siteId: mc.siteId,
+          sectionId: mc.sectionId,
+          externalId: mc.externalId,
+          title: mc.title,
+          eventTitle: mc.eventCache?.title,
+          closeTime: mc.closeTime?.toISOString() ?? undefined,
+          volume: mc.volume ?? undefined,
+          liquidity: mc.liquidity ?? undefined,
+          outcomes: mc.outcomes ?? undefined,
+          fetchedAt: mc.fetchedAt.toISOString(),
+          siteName: mc.site.name,
+          sectionName: mc.section.name,
+          attentionLevel: r.attentionLevel,
+        };
+      })
+      .sort((a, b) => {
+        const aT = a.closeTime ? new Date(a.closeTime).getTime() : Infinity;
+        const bT = b.closeTime ? new Date(b.closeTime).getTime() : Infinity;
+        return aT - bT;
+      });
+
+    return NextResponse.json(markets);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Internal server error";
+    console.error("[followed-markets] GET error:", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
