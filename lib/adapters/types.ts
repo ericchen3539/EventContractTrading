@@ -27,7 +27,7 @@ export interface EventMarketInput {
   /** open/active = displayable; closed/settled = not shown in user tables. */
   status?: string;
   /** First market's trading close time (交易截止时间 from Timeline and payout). */
-  createdAt?: Date;
+  nextTradingCloseTime?: Date;
   endDate?: Date;
   volume?: number;
   liquidity?: number;
@@ -43,7 +43,7 @@ export interface MarketInput {
   status?: string;
   closeTime?: Date;
   /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). For Kalshi: expiration_time ?? close_time. */
-  tradingCloseTime?: Date;
+  nextTradingCloseTime?: Date;
   volume?: number;
   liquidity?: number;
   outcomes?: Record<string, number>;
@@ -67,7 +67,7 @@ export interface Adapter {
   getMarketsForEvent(
     site: SiteInput,
     eventExternalId: string,
-    eventCreatedAt: Date | null
+    eventTradingCloseTime: Date | null
   ): Promise<MarketInput[]>;
 
   /**

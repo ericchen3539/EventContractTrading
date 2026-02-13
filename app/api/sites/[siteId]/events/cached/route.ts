@@ -2,7 +2,7 @@
  * Cached events API: GET — read EventCache from DB only (no adapter call).
  * Requires auth and site ownership.
  * Optional ?sectionIds=id1,id2 to filter sections.
- * Optional ?days=N to filter by createdAt (最近交易截止时间) <= today + N days; ?days=all for no date filter.
+ * Optional ?days=N to filter by nextTradingCloseTime (最近交易截止时间) <= today + N days; ?days=all for no date filter.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -78,13 +78,13 @@ async function handleGet(
     if (!Number.isNaN(parsed) && parsed > 0) {
       const days = Math.min(365, parsed);
       const cutoff = new Date(Date.now() + days * 86400000);
-      where.createdAt = { lte: cutoff };
+      where.nextTradingCloseTime = { lte: cutoff };
     }
   }
 
   const events = await prisma.eventCache.findMany({
     where,
-    orderBy: { createdAt: "asc" },
+    orderBy: { nextTradingCloseTime: "asc" },
   });
 
   return NextResponse.json(events.map(toPublicEvent));

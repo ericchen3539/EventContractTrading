@@ -679,7 +679,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             onUpdateMarkets={handleUpdateMarkets}
             onBatchUpdateMarkets={handleBatchUpdateMarkets}
             pageSize={10}
-            highlightColumns={["createdAt", "endDate"]}
+            highlightColumns={["nextTradingCloseTime", "endDate"]}
             selectable
             enableSelectAll
           />

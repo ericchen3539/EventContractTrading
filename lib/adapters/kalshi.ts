@@ -222,7 +222,7 @@ async function getEventsAndMarkets(
       if (noVal !== undefined) outcomes.No = noVal;
 
       /** First market's trading close time = 最近交易截止时间 (soonest "Otherwise, it closes by..."). */
-      const createdAt =
+      const nextTradingCloseTime =
         primary?.expiration_time
           ? new Date(primary.expiration_time)
           : primary?.close_time
@@ -237,7 +237,7 @@ async function getEventsAndMarkets(
         title: ev.title,
         description: ev.sub_title ?? undefined,
         status: "open",
-        createdAt,
+        nextTradingCloseTime,
         endDate: endDate ? new Date(endDate) : undefined,
         volume: typeof volume === "number" ? volume : undefined,
         liquidity: typeof liquidity === "number" ? liquidity : undefined,
@@ -259,7 +259,7 @@ async function getEventsAndMarkets(
 async function getMarketsForEvent(
   _site: SiteInput,
   eventExternalId: string,
-  _eventCreatedAt: Date | null
+  _eventTradingCloseTime: Date | null
 ): Promise<MarketInput[]> {
   const eventUrl = `${KALSHI_API_BASE}/events/${encodeURIComponent(eventExternalId)}?with_nested_markets=true`;
   const eventData = await fetchJson<{ event?: KalshiEvent; markets?: KalshiMarket[] }>(eventUrl);
@@ -298,14 +298,14 @@ async function getMarketsForEvent(
     if (noVal !== undefined) outcomes.No = noVal;
 
     const closeTime = ts ? new Date(ts) : undefined;
-    const tradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
+    const nextTradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
 
     results.push({
       externalId: m.ticker,
       title: m.title ?? m.ticker,
       status: m.status ?? undefined,
       closeTime,
-      tradingCloseTime,
+      nextTradingCloseTime,
       volume: typeof volume === "number" ? volume : undefined,
       liquidity: typeof liquidity === "number" ? liquidity : undefined,
       outcomes: Object.keys(outcomes).length ? outcomes : undefined,
@@ -372,7 +372,7 @@ async function getEventByTicker(
   if (yesVal !== undefined) outcomes.Yes = yesVal;
   if (noVal !== undefined) outcomes.No = noVal;
 
-  const createdAt =
+  const nextTradingCloseTime =
     primary?.expiration_time
       ? new Date(primary.expiration_time)
       : primary?.close_time
@@ -389,7 +389,7 @@ async function getEventByTicker(
     title: ev.title,
     description: ev.sub_title ?? undefined,
     status: primary?.status ?? "open",
-    createdAt,
+    nextTradingCloseTime,
     endDate: endDate ? new Date(endDate) : undefined,
     volume: typeof volume === "number" ? volume : undefined,
     liquidity: typeof liquidity === "number" ? liquidity : undefined,
@@ -440,14 +440,14 @@ async function getMarketByTicker(
   if (noVal !== undefined) outcomes.No = noVal;
 
   const closeTime = ts ? new Date(ts) : undefined;
-  const tradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
+  const nextTradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
 
   const market: MarketInput = {
     externalId: m.ticker,
     title: m.title ?? m.ticker,
     status: m.status ?? undefined,
     closeTime,
-    tradingCloseTime,
+    nextTradingCloseTime,
     volume: typeof volume === "number" ? volume : undefined,
     liquidity: typeof liquidity === "number" ? liquidity : undefined,
     outcomes: Object.keys(outcomes).length ? outcomes : undefined,

@@ -27,7 +27,7 @@ export type EventItem = {
   title: string;
   description?: string;
   /** First market's trading close time (交易截止时间 from Timeline and payout). */
-  createdAt?: string;
+  nextTradingCloseTime?: string;
   endDate?: string;
   volume?: number;
   liquidity?: number;
@@ -174,7 +174,7 @@ export function EventsTable({
     [highlightColumns]
   );
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "createdAt", desc: false },
+    { id: "nextTradingCloseTime", desc: false },
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -333,9 +333,9 @@ export function EventsTable({
           sectionNameMap[row.original.sectionId] ?? row.original.sectionId,
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: "nextTradingCloseTime",
         header: "最近交易截止时间",
-        cell: ({ row }) => formatDate(row.original.createdAt),
+        cell: ({ row }) => formatDate(row.original.nextTradingCloseTime),
       },
       {
         accessorKey: "endDate",

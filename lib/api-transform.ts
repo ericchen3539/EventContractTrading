@@ -51,7 +51,7 @@ export type PublicEvent = {
   externalId: string;
   title: string;
   description?: string;
-  createdAt?: string;
+  nextTradingCloseTime?: string;
   endDate?: string;
   volume?: number;
   liquidity?: number;
@@ -66,7 +66,7 @@ export function toPublicEvent(event: {
   externalId: string;
   title: string;
   description: string | null;
-  createdAt: Date | null;
+  nextTradingCloseTime: Date | null;
   endDate: Date | null;
   volume: number | null;
   liquidity: number | null;
@@ -80,7 +80,7 @@ export function toPublicEvent(event: {
     externalId: event.externalId,
     title: event.title,
     description: event.description ?? undefined,
-    createdAt: event.createdAt?.toISOString() ?? undefined,
+    nextTradingCloseTime: event.nextTradingCloseTime?.toISOString() ?? undefined,
     endDate: event.endDate?.toISOString() ?? undefined,
     volume: event.volume ?? undefined,
     liquidity: event.liquidity ?? undefined,

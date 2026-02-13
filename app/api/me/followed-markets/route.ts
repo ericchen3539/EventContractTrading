@@ -82,7 +82,7 @@ export async function GET(request: Request) {
           title: mc.title,
           eventTitle: mc.eventCache?.title,
           closeTime: mc.closeTime?.toISOString() ?? undefined,
-          tradingCloseTime: mc.tradingCloseTime?.toISOString() ?? undefined,
+          nextTradingCloseTime: mc.nextTradingCloseTime?.toISOString() ?? undefined,
           volume: mc.volume ?? undefined,
           liquidity: mc.liquidity ?? undefined,
           outcomes: mc.outcomes ?? undefined,
@@ -93,11 +93,11 @@ export async function GET(request: Request) {
         };
       })
       .sort((a, b) => {
-        const aT = (a.tradingCloseTime ?? a.closeTime)
-          ? new Date(a.tradingCloseTime ?? a.closeTime!).getTime()
+        const aT = (a.nextTradingCloseTime ?? a.closeTime)
+          ? new Date(a.nextTradingCloseTime ?? a.closeTime!).getTime()
           : Infinity;
-        const bT = (b.tradingCloseTime ?? b.closeTime)
-          ? new Date(b.tradingCloseTime ?? b.closeTime!).getTime()
+        const bT = (b.nextTradingCloseTime ?? b.closeTime)
+          ? new Date(b.nextTradingCloseTime ?? b.closeTime!).getTime()
           : Infinity;
         return aT - bT;
       });

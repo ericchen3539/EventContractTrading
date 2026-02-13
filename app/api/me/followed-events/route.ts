@@ -79,7 +79,7 @@ export async function GET(request: Request) {
         externalId: ec.externalId,
         title: ec.title,
         description: ec.description ?? undefined,
-        createdAt: ec.createdAt?.toISOString() ?? undefined,
+        nextTradingCloseTime: ec.nextTradingCloseTime?.toISOString() ?? undefined,
         endDate: ec.endDate?.toISOString() ?? undefined,
         volume: ec.volume ?? undefined,
         liquidity: ec.liquidity ?? undefined,
@@ -91,8 +91,8 @@ export async function GET(request: Request) {
       };
       })
       .sort((a, b) => {
-        const aT = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
-        const bT = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
+        const aT = a.nextTradingCloseTime ? new Date(a.nextTradingCloseTime).getTime() : Infinity;
+        const bT = b.nextTradingCloseTime ? new Date(b.nextTradingCloseTime).getTime() : Infinity;
         return aT - bT;
       });
 

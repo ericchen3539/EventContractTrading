@@ -29,7 +29,7 @@ export type MarketItem = {
   eventTitle?: string;
   closeTime?: string;
   /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). Primary sort key. */
-  tradingCloseTime?: string;
+  nextTradingCloseTime?: string;
   volume?: number;
   liquidity?: number;
   outcomes?: Record<string, number>;
@@ -124,7 +124,7 @@ export function MarketsTable({
     [highlightColumns]
   );
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "tradingCloseTime", desc: false },
+    { id: "nextTradingCloseTime", desc: false },
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -296,12 +296,12 @@ export function MarketsTable({
           row.original.sectionId,
       },
       {
-        id: "tradingCloseTime",
+        id: "nextTradingCloseTime",
         accessorFn: (row) =>
-          row.tradingCloseTime ?? row.closeTime ?? "",
+          row.nextTradingCloseTime ?? row.closeTime ?? "",
         header: "交易截止时间",
         cell: ({ row }) =>
-          formatDate(row.original.tradingCloseTime ?? row.original.closeTime),
+          formatDate(row.original.nextTradingCloseTime ?? row.original.closeTime),
       },
       {
         accessorKey: "volume",

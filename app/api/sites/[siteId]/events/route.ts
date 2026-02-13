@@ -82,7 +82,7 @@ async function handleGet(
           { status: null },
         ],
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { nextTradingCloseTime: "asc" },
     });
     return NextResponse.json({
       newEvents: [],
@@ -147,7 +147,7 @@ async function handleGet(
               title: ev.title,
               description: ev.description ?? null,
               status: ev.status ?? null,
-              createdAt: ev.createdAt ?? null,
+              nextTradingCloseTime: ev.nextTradingCloseTime ?? null,
               endDate: ev.endDate ?? null,
               volume: ev.volume ?? null,
               liquidity: ev.liquidity ?? null,
@@ -169,7 +169,7 @@ async function handleGet(
               title: ev.title,
               description: ev.description ?? null,
               status: ev.status ?? null,
-              createdAt: ev.createdAt ?? null,
+              nextTradingCloseTime: ev.nextTradingCloseTime ?? null,
               endDate: ev.endDate ?? null,
               volume: ev.volume ?? null,
               liquidity: ev.liquidity ?? null,
@@ -206,13 +206,13 @@ async function handleGet(
   );
 
   const sortedNew = [...newEvents].sort((a, b) => {
-    const aT = a.createdAt?.getTime() ?? Infinity;
-    const bT = b.createdAt?.getTime() ?? Infinity;
+    const aT = a.nextTradingCloseTime?.getTime() ?? Infinity;
+    const bT = b.nextTradingCloseTime?.getTime() ?? Infinity;
     return aT - bT;
   });
   const sortedChanged = [...changedEvents].sort((a, b) => {
-    const aT = a.createdAt?.getTime() ?? Infinity;
-    const bT = b.createdAt?.getTime() ?? Infinity;
+    const aT = a.nextTradingCloseTime?.getTime() ?? Infinity;
+    const bT = b.nextTradingCloseTime?.getTime() ?? Infinity;
     return aT - bT;
   });
 
