@@ -345,11 +345,13 @@ export function MarketsTable({
           const { outcomes, oldOutcomes } = row.original;
           if (oldOutcomes != null) {
             return (
-              <div className="max-w-[200px] space-y-0.5 text-sm">
+              <div className="max-w-[240px] space-y-0.5 text-sm">
                 <div className="text-slate-900 dark:text-slate-100" title={formatOutcomes(oldOutcomes)}>
+                  <span className="text-slate-500 dark:text-slate-400">旧 </span>
                   {formatOutcomes(oldOutcomes)}
                 </div>
                 <div className="text-red-600 dark:text-red-400" title={formatOutcomes(outcomes)}>
+                  <span className="text-red-600 dark:text-red-400">新 </span>
                   {formatOutcomes(outcomes)}
                 </div>
               </div>

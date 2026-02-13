@@ -36,14 +36,29 @@ function hasMarketSemanticChanges(
   return false;
 }
 
-/** True only when outcomes (价格|概率) differ. Used to decide if market appears in 价格变更市场. */
+/** Round probability for stable comparison (avoids 0.97 vs 0.9700001). */
+const OUTCOMES_PRECISION = 2;
+
+function outcomesToComparable(outcomes: unknown): string {
+  if (!outcomes || typeof outcomes !== "object") return "{}";
+  const obj = outcomes as Record<string, number>;
+  const sorted: Record<string, number> = {};
+  for (const k of Object.keys(obj).sort()) {
+    const v = obj[k];
+    sorted[k] =
+      typeof v === "number" && !Number.isNaN(v)
+        ? Math.round(v * Math.pow(10, OUTCOMES_PRECISION)) / Math.pow(10, OUTCOMES_PRECISION)
+        : 0;
+  }
+  return JSON.stringify(sorted);
+}
+
+/** True only when outcomes (价格|概率) differ semantically. Used to decide if market appears in 价格变更市场. */
 function hasOutcomesChange(
   input: MarketInput,
   existing: { outcomes: unknown }
 ): boolean {
-  const inOut = JSON.stringify(input.outcomes ?? {});
-  const exOut = JSON.stringify(existing.outcomes ?? {});
-  return inOut !== exOut;
+  return outcomesToComparable(input.outcomes) !== outcomesToComparable(existing.outcomes);
 }
 
 export type PublicMarket = {
