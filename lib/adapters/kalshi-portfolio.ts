@@ -3,9 +3,14 @@
  * Requires API Key ID + RSA private key (PEM) for signature.
  * @see https://docs.kalshi.com/getting_started/quick_start_authenticated_requests
  */
-import { sign, constants } from "node:crypto";
+import { sign, createPrivateKey, constants } from "node:crypto";
 
 const { RSA_PKCS1_PSS_PADDING, RSA_PSS_SALTLEN_DIGEST } = constants;
+
+/** Normalize PEM: ensure Unix line endings. Fixes DECODER routines::unsupported on some systems. */
+function normalizePem(pem: string): string {
+  return pem.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+}
 
 /** Derive Kalshi API base URL from site baseUrl. */
 export function getKalshiApiBase(baseUrl: string): string {
@@ -27,6 +32,8 @@ export function getKalshiApiBase(baseUrl: string): string {
 /**
  * Create Kalshi request signature. Message: timestamp + method + path (no query params).
  * Signs with RSA-PSS SHA256, returns base64.
+ * Uses createPrivateKey to handle PKCS#1 and PKCS#8; normalizes PEM line endings.
+ * Throws with a helpful message if the key format is unsupported (e.g. OpenSSL 3 DECODER error).
  */
 export function signKalshiRequest(
   privateKeyPem: string,
@@ -36,8 +43,26 @@ export function signKalshiRequest(
 ): string {
   const pathWithoutQuery = path.split("?")[0];
   const message = `${timestamp}${method}${pathWithoutQuery}`;
+  const normalizedPem = normalizePem(privateKeyPem);
+
+  let keyObject: ReturnType<typeof createPrivateKey>;
+  try {
+    keyObject = createPrivateKey({
+      key: normalizedPem,
+      format: "pem",
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("DECODER") || msg.includes("unsupported")) {
+      throw new Error(
+        "私钥格式不受支持。请将 PKCS#1 密钥转换为 PKCS#8：openssl pkcs8 -topk8 -nocrypt -in key.pem -out key_pkcs8.pem，然后粘贴 key_pkcs8.pem 的内容。"
+      );
+    }
+    throw err;
+  }
+
   const sig = sign("sha256", Buffer.from(message, "utf8"), {
-    key: privateKeyPem,
+    key: keyObject,
     padding: RSA_PKCS1_PSS_PADDING,
     saltLength: RSA_PSS_SALTLEN_DIGEST,
   });
