@@ -7,6 +7,7 @@ import type { MarketInput } from "@/lib/adapters/types";
 import { prisma } from "@/lib/db";
 import { getAdapter } from "@/lib/adapters";
 
+/** True if any semantic field (closeTime, volume, liquidity, outcomes) differs. Used for DB update. */
 function hasMarketSemanticChanges(
   input: MarketInput,
   existing: {
@@ -35,6 +36,16 @@ function hasMarketSemanticChanges(
   return false;
 }
 
+/** True only when outcomes (价格|概率) differ. Used to decide if market appears in 价格变更市场. */
+function hasOutcomesChange(
+  input: MarketInput,
+  existing: { outcomes: unknown }
+): boolean {
+  const inOut = JSON.stringify(input.outcomes ?? {});
+  const exOut = JSON.stringify(existing.outcomes ?? {});
+  return inOut !== exOut;
+}
+
 export type PublicMarket = {
   id: string;
   eventCacheId: string;
@@ -48,6 +59,8 @@ export type PublicMarket = {
   liquidity?: number;
   outcomes?: Record<string, number>;
   fetchedAt: string;
+  /** Previous outcomes when market was updated due to price change; shown in 价格变更市场 */
+  oldOutcomes?: Record<string, number>;
 };
 
 function toPublicMarket(
@@ -116,7 +129,11 @@ export async function updateMarketsForEvent(
   );
 
   const newMarkets: Awaited<ReturnType<typeof prisma.market.create>>[] = [];
-  const changedMarkets: Awaited<ReturnType<typeof prisma.market.update>>[] = [];
+  /** Only markets with outcomes change; includes oldOutcomes for display */
+  const priceChangedMarkets: Array<{
+    market: Awaited<ReturnType<typeof prisma.market.update>>;
+    oldOutcomes: Record<string, number>;
+  }> = [];
 
   const existing = await prisma.market.findMany({
     where: { eventCacheId: eventId },
@@ -162,7 +179,12 @@ export async function updateMarketsForEvent(
           fetchedAt: new Date(),
         },
       });
-      changedMarkets.push(updated);
+      if (
+        hasOutcomesChange(m, { outcomes: existingRecord.outcomes })
+      ) {
+        const oldOut = (existingRecord.outcomes as Record<string, number>) ?? {};
+        priceChangedMarkets.push({ market: updated, oldOutcomes: oldOut });
+      }
     }
   }
 
@@ -171,15 +193,18 @@ export async function updateMarketsForEvent(
     const bT = b.closeTime?.getTime() ?? Infinity;
     return aT - bT;
   });
-  const sortedChanged = [...changedMarkets].sort((a, b) => {
-    const aT = a.closeTime?.getTime() ?? Infinity;
-    const bT = b.closeTime?.getTime() ?? Infinity;
+  const sortedChanged = [...priceChangedMarkets].sort((a, b) => {
+    const aT = a.market.closeTime?.getTime() ?? Infinity;
+    const bT = b.market.closeTime?.getTime() ?? Infinity;
     return aT - bT;
   });
 
   return {
     newMarkets: sortedNew.map((m) => toPublicMarket(m, event.title)),
-    changedMarkets: sortedChanged.map((m) => toPublicMarket(m, event.title)),
+    changedMarkets: sortedChanged.map(({ market, oldOutcomes }) => ({
+      ...toPublicMarket(market, event.title),
+      oldOutcomes,
+    })),
     adapterReturnedEmpty: markets.length === 0,
   };
 }

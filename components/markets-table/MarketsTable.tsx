@@ -33,6 +33,8 @@ export type MarketItem = {
   attentionLevel?: number;
   siteName?: string;
   sectionName?: string;
+  /** Previous outcomes when market had price change; used in 价格变更市场 for two-line display */
+  oldOutcomes?: Record<string, number>;
 };
 
 interface MarketsTableProps {
@@ -339,11 +341,26 @@ export function MarketsTable({
       {
         accessorKey: "outcomes",
         header: "价格/概率",
-        cell: ({ row }) => (
-          <div className="max-w-[200px] truncate text-sm" title={formatOutcomes(row.original.outcomes)}>
-            {formatOutcomes(row.original.outcomes)}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const { outcomes, oldOutcomes } = row.original;
+          if (oldOutcomes != null) {
+            return (
+              <div className="max-w-[200px] space-y-0.5 text-sm">
+                <div className="text-slate-900 dark:text-slate-100" title={formatOutcomes(oldOutcomes)}>
+                  {formatOutcomes(oldOutcomes)}
+                </div>
+                <div className="text-red-600 dark:text-red-400" title={formatOutcomes(outcomes)}>
+                  {formatOutcomes(outcomes)}
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="max-w-[200px] truncate text-sm" title={formatOutcomes(outcomes)}>
+              {formatOutcomes(outcomes)}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "fetchedAt",

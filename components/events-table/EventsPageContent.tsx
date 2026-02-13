@@ -708,7 +708,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
       {changedMarkets.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
-            变更市场
+            价格变更市场
           </h2>
           <MarketsTable
             markets={changedMarkets}
@@ -718,7 +718,6 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             onAttentionChange={handleMarketAttentionChange}
             onBatchAttentionChange={handleBatchMarketAttentionChange}
             pageSize={10}
-            highlightColumns={["closeTime", "volume", "liquidity", "outcomes"]}
             selectable
             enableSelectAll
           />
