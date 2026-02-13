@@ -13,7 +13,7 @@ const ATTENTION_FILTER_STORAGE_KEY = "me-markets-page-attention-filter";
 const BROWSE_PREFS_STORAGE_KEY = "me-markets-page-browse-prefs";
 
 type AttentionFilterPreset = "0" | "1" | "2" | "3" | "custom";
-type DaysFilterPreset = "3" | "7" | "30" | "all" | "custom";
+type DaysFilterPreset = "3" | "7" | "14" | "30" | "all" | "custom";
 
 function loadAttentionFilterFromStorage(): {
   preset: AttentionFilterPreset;
@@ -68,7 +68,7 @@ function loadBrowsePrefsFromStorage(siteIds: string[]): BrowsePrefs {
     const parsed = JSON.parse(raw) as BrowsePrefs;
     const siteId =
       parsed.siteId && siteIds.includes(parsed.siteId) ? parsed.siteId : undefined;
-    const daysPreset = ["3", "7", "30", "all", "custom"].includes(
+    const daysPreset = ["3", "7", "14", "30", "all", "custom"].includes(
       parsed.daysPreset ?? ""
     )
       ? (parsed.daysPreset as DaysFilterPreset)
@@ -644,7 +644,7 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
                 天数范围（截止时间）
               </label>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {(["3", "7", "30", "all"] as const).map((p) => (
+                {(["3", "7", "14", "30", "all"] as const).map((p) => (
                   <label
                     key={p}
                     className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
