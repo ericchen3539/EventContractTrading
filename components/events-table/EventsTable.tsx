@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { MAX_SELECTED_EVENTS } from "@/lib/constants";
+import { CopyableText } from "@/components/ui/CopyableText";
 
 /** Event as returned by GET /api/sites/[siteId]/events or GET /api/me/followed-events */
 export type EventItem = {
@@ -357,9 +358,7 @@ export function EventsTable({
         accessorKey: "title",
         header: "标题",
         cell: ({ row }) => (
-          <div className="max-w-[320px] break-words whitespace-normal" title={row.original.title}>
-            {row.original.title}
-          </div>
+          <CopyableText text={row.original.title} className="max-w-[320px]" />
         ),
       },
       {

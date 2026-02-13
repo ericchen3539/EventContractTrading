@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { MAX_SELECTED_MARKETS } from "@/lib/constants";
+import { CopyableText } from "@/components/ui/CopyableText";
 
 /** Market as returned by GET /api/sites/[siteId]/markets/cached or GET /api/me/followed-markets */
 export type MarketItem = {
@@ -311,11 +312,12 @@ export function MarketsTable({
       {
         accessorKey: "eventTitle",
         header: "所属事件",
-        cell: ({ row }) => (
-          <div className="max-w-[320px] break-words whitespace-normal" title={row.original.eventTitle}>
-            {row.original.eventTitle ?? "—"}
-          </div>
-        ),
+        cell: ({ row }) =>
+          row.original.eventTitle ? (
+            <CopyableText text={row.original.eventTitle} className="max-w-[320px]" />
+          ) : (
+            <span>—</span>
+          ),
       },
       {
         accessorKey: "sectionId",
