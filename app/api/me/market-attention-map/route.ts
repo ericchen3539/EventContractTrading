@@ -1,6 +1,6 @@
 /**
  * GET /api/me/market-attention-map
- * Returns { [marketCacheId]: attentionLevel } for the current user.
+ * Returns { [marketId]: attentionLevel } for the current user.
  * Used by market tables to show/edit attention levels for all markets.
  */
 import { NextResponse } from "next/server";
@@ -17,12 +17,12 @@ export async function GET() {
 
     const rows = await prisma.userFollowedMarket.findMany({
       where: { userId: session.user.id },
-      select: { marketCacheId: true, attentionLevel: true },
+      select: { marketId: true, attentionLevel: true },
     });
 
     const map: Record<string, number> = {};
     for (const r of rows) {
-      map[r.marketCacheId] = r.attentionLevel;
+      map[r.marketId] = r.attentionLevel;
     }
     return NextResponse.json(map);
   } catch (err) {

@@ -33,7 +33,7 @@ export interface EventMarketInput {
   raw?: Record<string, unknown>;
 }
 
-/** Market record for MarketCache; adapter returns this shape before DB upsert. */
+/** Market record for Market; adapter returns this shape before DB upsert. */
 export interface MarketInput {
   externalId: string;
   title: string;

@@ -62,7 +62,7 @@ model Site {
   createdAt     DateTime     @default(now())
   sections      Section[]
   eventCaches   EventCache[]
-  marketCaches  MarketCache[]
+  markets       Market[]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -75,7 +75,7 @@ model Section {
   urlOrSlug    String?
   enabled      Boolean       @default(true)
   eventCaches  EventCache[]
-  marketCaches MarketCache[]
+  markets      Market[]
 
   site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
@@ -101,12 +101,12 @@ model EventCache {
   site           Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
   section        Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   followedBy     UserFollowedEvent[]
-  marketCaches   MarketCache[]
+  markets       Market[]
 
   @@unique([siteId, sectionId, externalId])
 }
 
-model MarketCache {
+model Market {
   id           String   @id @default(cuid())
   eventCacheId String
   siteId       String
@@ -120,10 +120,10 @@ model MarketCache {
   raw          Json?
   fetchedAt    DateTime @default(now())
 
-  eventCache  EventCache          @relation(fields: [eventCacheId], references: [id], onDelete: Cascade)
-  site        Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  section     Section             @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  followedBy  UserFollowedMarket[]
+  eventCache EventCache         @relation(fields: [eventCacheId], references: [id], onDelete: Cascade)
+  site       Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  section    Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  followedBy UserFollowedMarket[]
 
   @@unique([siteId, eventCacheId, externalId])
 }
@@ -131,14 +131,14 @@ model MarketCache {
 model UserFollowedMarket {
   id             String   @id @default(cuid())
   userId         String
-  marketCacheId  String
+  marketId       String
   attentionLevel Int      @default(1)
   createdAt      DateTime @default(now())
 
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  marketCache MarketCache @relation(fields: [marketCacheId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, marketCacheId])
+  @@unique([userId, marketId])
 }
 
 model UserFollowedEvent {

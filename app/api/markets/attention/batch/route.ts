@@ -79,7 +79,7 @@ export async function PUT(request: Request) {
     }
 
     const marketIds = updates.map((u) => u.marketId);
-    const markets = await prisma.marketCache.findMany({
+    const markets = await prisma.market.findMany({
       where: { id: { in: marketIds } },
       include: { site: true },
     });
@@ -107,14 +107,14 @@ export async function PUT(request: Request) {
       updates.map(({ marketId, attentionLevel }) =>
         prisma.userFollowedMarket.upsert({
           where: {
-            userId_marketCacheId: {
+            userId_marketId: {
               userId: session.user!.id,
-              marketCacheId: marketId,
+              marketId,
             },
           },
           create: {
             userId: session.user!.id,
-            marketCacheId: marketId,
+            marketId,
             attentionLevel,
           },
           update: { attentionLevel },

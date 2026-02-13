@@ -1,5 +1,5 @@
 /**
- * Cached markets API: GET — read MarketCache from DB only (no adapter call).
+ * Cached markets API: GET — read Market from DB only (no adapter call).
  * Requires auth and site ownership.
  * Optional ?sectionIds=id1,id2 to filter sections.
  * Optional ?days=N to filter by closeTime <= today + N days; ?days=all for no date filter.
@@ -109,7 +109,7 @@ async function handleGet(
     }
   }
 
-  const markets = await prisma.marketCache.findMany({
+  const markets = await prisma.market.findMany({
     where,
     include: { eventCache: { select: { title: true } } },
     orderBy: { closeTime: "asc" },

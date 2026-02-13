@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     const rows = await prisma.userFollowedMarket.findMany({
       where: whereClause,
       include: {
-        marketCache: {
+        market: {
           include: {
             site: { select: { name: true } },
             section: { select: { name: true } },
@@ -64,9 +64,9 @@ export async function GET(request: Request) {
     });
 
     const markets = rows
-      .filter((r) => r.marketCache != null)
+      .filter((r) => r.market != null)
       .map((r) => {
-        const mc = r.marketCache!;
+        const mc = r.market!;
         return {
           id: mc.id,
           eventCacheId: mc.eventCacheId,

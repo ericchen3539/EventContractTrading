@@ -50,7 +50,7 @@ export async function PUT(
       );
     }
 
-    const market = await prisma.marketCache.findUnique({
+    const market = await prisma.market.findUnique({
       where: { id: marketId },
       include: { site: true },
     });
@@ -63,14 +63,14 @@ export async function PUT(
 
     await prisma.userFollowedMarket.upsert({
       where: {
-        userId_marketCacheId: {
+        userId_marketId: {
           userId: session.user.id,
-          marketCacheId: marketId,
+          marketId,
         },
       },
       create: {
         userId: session.user.id,
-        marketCacheId: marketId,
+        marketId,
         attentionLevel,
       },
       update: { attentionLevel },

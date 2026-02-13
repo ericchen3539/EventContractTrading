@@ -1,7 +1,7 @@
 /**
  * PUT /api/events/[eventId]/markets/update
  * Fetch markets for the event whose close_time equals event.createdAt,
- * upsert to MarketCache, return newMarkets and changedMarkets.
+ * upsert to Market, return newMarkets and changedMarkets.
  */
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
@@ -127,10 +127,10 @@ export async function PUT(
       );
     }
 
-    const newMarkets: Awaited<ReturnType<typeof prisma.marketCache.create>>[] = [];
-    const changedMarkets: Awaited<ReturnType<typeof prisma.marketCache.update>>[] = [];
+    const newMarkets: Awaited<ReturnType<typeof prisma.market.create>>[] = [];
+    const changedMarkets: Awaited<ReturnType<typeof prisma.market.update>>[] = [];
 
-    const existing = await prisma.marketCache.findMany({
+    const existing = await prisma.market.findMany({
       where: { eventCacheId: eventId },
     });
     const existingMap = new Map(existing.map((m) => [m.externalId, m]));
@@ -139,7 +139,7 @@ export async function PUT(
       const existingRecord = existingMap.get(m.externalId);
 
       if (!existingRecord) {
-        const created = await prisma.marketCache.create({
+        const created = await prisma.market.create({
           data: {
             eventCacheId: eventId,
             siteId: event.siteId,
@@ -162,7 +162,7 @@ export async function PUT(
           outcomes: existingRecord.outcomes,
         })
       ) {
-        const updated = await prisma.marketCache.update({
+        const updated = await prisma.market.update({
           where: { id: existingRecord.id },
           data: {
             title: m.title,
