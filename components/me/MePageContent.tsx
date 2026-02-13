@@ -673,7 +673,7 @@ export function MePageContent({ sites }: MePageContentProps) {
       <div className="space-y-4">
         <div className="flex flex-col gap-2">
           <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
-            我的关注
+            我的事件
           </h2>
           <div className="flex flex-wrap gap-2">
             <button

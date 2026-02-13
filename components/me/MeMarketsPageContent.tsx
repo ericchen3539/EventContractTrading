@@ -468,7 +468,7 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
       </h1>
 
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-2">
           <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
             我的市场
           </h2>
