@@ -33,9 +33,10 @@ export function getKalshiApiBase(baseUrl: string): string {
     if (host.includes("elections")) {
       return "https://api.elections.kalshi.com/trade-api/v2";
     }
-    return "https://api.kalshi.com/trade-api/v2";
+    /** Default to elections API (same as events adapter); api.kalshi.com may be unreachable in some regions. */
+    return "https://api.elections.kalshi.com/trade-api/v2";
   } catch {
-    return "https://api.kalshi.com/trade-api/v2";
+    return "https://api.elections.kalshi.com/trade-api/v2";
   }
 }
 
