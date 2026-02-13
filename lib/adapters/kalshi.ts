@@ -315,8 +315,92 @@ async function getMarketsForEvent(
   return results;
 }
 
+/**
+ * Fetch a single event by ticker. Used for associating event positions with EventCache.
+ * Returns EventMarketInput or null if event not found.
+ */
+async function getEventByTicker(
+  _site: SiteInput,
+  eventTicker: string
+): Promise<EventMarketInput | null> {
+  const eventUrl = `${KALSHI_API_BASE}/events/${encodeURIComponent(eventTicker)}?with_nested_markets=true`;
+  let eventData: { event?: KalshiEvent; markets?: KalshiMarket[] };
+  try {
+    eventData = await fetchJson<{ event?: KalshiEvent; markets?: KalshiMarket[] }>(eventUrl);
+  } catch {
+    return null;
+  }
+
+  const ev = eventData.event;
+  if (!ev) return null;
+
+  let markets = eventData.markets ?? ev.markets ?? [];
+  if (markets.length === 0) {
+    const marketsUrl = `${KALSHI_API_BASE}/markets?event_ticker=${encodeURIComponent(eventTicker)}&limit=200`;
+    try {
+      const marketsData = await fetchJson<{ markets?: KalshiMarket[] }>(marketsUrl);
+      markets = marketsData.markets ?? [];
+    } catch {
+      // Proceed with empty markets
+    }
+  }
+
+  const openMarkets = markets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
+  const sortedByTradingClose = [...(openMarkets.length ? openMarkets : markets)].sort((a, b) => {
+    const aTs = a.expiration_time ?? a.close_time ?? "";
+    const bTs = b.expiration_time ?? b.close_time ?? "";
+    return aTs.localeCompare(bTs);
+  });
+  const primary = sortedByTradingClose[0];
+  const lastMarket = sortedByTradingClose.length > 1 ? sortedByTradingClose[sortedByTradingClose.length - 1] : primary;
+
+  const volume = primary?.volume ?? 0;
+  const liquidityRaw = primary?.liquidity_dollars ?? primary?.liquidity;
+  const liquidity =
+    typeof liquidityRaw === "string"
+      ? parseFloat(liquidityRaw)
+      : typeof liquidityRaw === "number"
+        ? liquidityRaw / 100
+        : undefined;
+
+  const yesPrice =
+    primary?.last_price_dollars ?? primary?.yes_ask_dollars ?? primary?.yes_bid_dollars;
+  const yesVal = yesPrice ? parseFloat(String(yesPrice)) : undefined;
+  const noVal = yesVal !== undefined ? 1 - yesVal : undefined;
+
+  const outcomes: Record<string, number> = {};
+  if (yesVal !== undefined) outcomes.Yes = yesVal;
+  if (noVal !== undefined) outcomes.No = noVal;
+
+  const createdAt =
+    primary?.expiration_time
+      ? new Date(primary.expiration_time)
+      : primary?.close_time
+        ? new Date(primary.close_time)
+        : undefined;
+  const endDate =
+    lastMarket?.close_time ?? lastMarket?.expiration_time ?? ev.strike_date;
+
+  const category = ev.category ?? "World";
+
+  return {
+    externalId: ev.event_ticker,
+    sectionExternalId: category,
+    title: ev.title,
+    description: ev.sub_title ?? undefined,
+    status: primary?.status ?? "open",
+    createdAt,
+    endDate: endDate ? new Date(endDate) : undefined,
+    volume: typeof volume === "number" ? volume : undefined,
+    liquidity: typeof liquidity === "number" ? liquidity : undefined,
+    outcomes: Object.keys(outcomes).length ? outcomes : undefined,
+    raw: { event: ev, market: primary } as Record<string, unknown>,
+  };
+}
+
 export const kalshiAdapter: Adapter = {
   getSections,
   getEventsAndMarkets,
   getMarketsForEvent,
+  getEventByTicker,
 };

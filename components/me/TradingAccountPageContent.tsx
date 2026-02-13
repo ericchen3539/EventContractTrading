@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { formatDate, formatCents } from "@/lib/format";
@@ -142,6 +142,8 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<TradingData | null>(null);
+  const [eventTickerToTitle, setEventTickerToTitle] = useState<Record<string, string>>({});
+  const [associatingTicker, setAssociatingTicker] = useState<string | null>(null);
 
   const sitesWithApiKey = useMemo(
     () => sites.filter((s) => s.adapterKey === "kalshi" && s.hasApiKey),
@@ -170,6 +172,36 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
       setLoading(false);
     }
   }, [selectedSiteId]);
+
+  useEffect(() => {
+    setEventTickerToTitle({});
+  }, [selectedSiteId]);
+
+  const handleAssociateEvent = useCallback(
+    async (eventTicker: string) => {
+      if (!selectedSiteId) return;
+      setAssociatingTicker(eventTicker);
+      try {
+        const res = await fetch(`/api/sites/${selectedSiteId}/trading-data/associate-event`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventTicker }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          toast.error(json.error ?? "关联失败");
+          return;
+        }
+        setEventTickerToTitle((prev) => ({ ...prev, [eventTicker]: json.title }));
+        toast.success("关联成功");
+      } catch {
+        toast.error("关联失败：网络错误，请稍后重试");
+      } finally {
+        setAssociatingTicker(null);
+      }
+    },
+    [selectedSiteId]
+  );
 
   return (
     <div className="space-y-6">
@@ -299,7 +331,25 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
               {
                 key: "event",
                 header: "事件",
-                render: (r) => r.event_ticker ?? "—",
+                render: (r) =>
+                  eventTickerToTitle[r.event_ticker ?? ""] ?? r.event_ticker ?? "—",
+              },
+              {
+                key: "associate",
+                header: "关联",
+                render: (r) => {
+                  const ticker = r.event_ticker ?? "";
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleAssociateEvent(ticker)}
+                      disabled={!ticker || associatingTicker === ticker}
+                      className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
+                    >
+                      {associatingTicker === ticker ? "关联中…" : "关联"}
+                    </button>
+                  );
+                },
               },
               {
                 key: "cost",

@@ -69,4 +69,13 @@ export interface Adapter {
     eventExternalId: string,
     eventCreatedAt: Date | null
   ): Promise<MarketInput[]>;
+
+  /**
+   * Fetch a single event by ticker. Used for associating event positions with EventCache.
+   * Optional; Kalshi implements this.
+   */
+  getEventByTicker?(
+    site: SiteInput,
+    eventTicker: string
+  ): Promise<EventMarketInput | null>;
 }
