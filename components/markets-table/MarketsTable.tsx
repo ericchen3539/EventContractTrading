@@ -312,7 +312,7 @@ export function MarketsTable({
         accessorKey: "eventTitle",
         header: "所属事件",
         cell: ({ row }) => (
-          <div className="max-w-[320px] truncate" title={row.original.eventTitle}>
+          <div className="max-w-[320px] break-words whitespace-normal" title={row.original.eventTitle}>
             {row.original.eventTitle ?? "—"}
           </div>
         ),
