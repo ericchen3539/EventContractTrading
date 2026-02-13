@@ -718,7 +718,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             onAttentionChange={handleMarketAttentionChange}
             onBatchAttentionChange={handleBatchMarketAttentionChange}
             pageSize={10}
-            highlightColumns={["closeTime", "outcomes"]}
+            highlightColumns={["closeTime", "volume", "liquidity", "outcomes"]}
             selectable
             enableSelectAll
           />

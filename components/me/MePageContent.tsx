@@ -7,6 +7,10 @@ import {
   EventsTable,
   type EventItem,
 } from "@/components/events-table/EventsTable";
+import {
+  MarketsTable,
+  type MarketItem,
+} from "@/components/markets-table/MarketsTable";
 import type { SiteItem, SectionItem } from "@/components/events-table/EventsPageContent";
 
 const ATTENTION_FILTER_STORAGE_KEY = "me-page-attention-filter";
@@ -143,6 +147,11 @@ export function MePageContent({ sites }: MePageContentProps) {
   const [browseAttentionMap, setBrowseAttentionMap] = useState<
     Record<string, number>
   >({});
+  const [newMarkets, setNewMarkets] = useState<MarketItem[]>([]);
+  const [changedMarkets, setChangedMarkets] = useState<MarketItem[]>([]);
+  const [marketAttentionMap, setMarketAttentionMap] = useState<
+    Record<string, number>
+  >({});
   const shouldAutoLoadBrowse = useRef(false);
 
   const [daysFilterPreset, setDaysFilterPreset] = useState<
@@ -191,6 +200,22 @@ export function MePageContent({ sites }: MePageContentProps) {
   useEffect(() => {
     fetchBrowseAttentionMap();
   }, [fetchBrowseAttentionMap]);
+
+  const fetchMarketAttentionMap = useCallback(async () => {
+    try {
+      const res = await fetch("/api/me/market-attention-map");
+      const data = await res.json();
+      if (res.ok && data && typeof data === "object") {
+        setMarketAttentionMap(data as Record<string, number>);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMarketAttentionMap();
+  }, [fetchMarketAttentionMap]);
 
   const fetchFollowedEvents = useCallback(async () => {
     setLoadingFollowed(true);
@@ -283,6 +308,56 @@ export function MePageContent({ sites }: MePageContentProps) {
     [fetchFollowedEvents]
   );
 
+  const handleMarketAttentionChange = useCallback(
+    async (marketId: string, level: number) => {
+      try {
+        const res = await fetch(`/api/markets/${marketId}/attention`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attentionLevel: level }),
+        });
+        if (res.ok) {
+          setMarketAttentionMap((prev) => ({ ...prev, [marketId]: level }));
+          toast.success(level === 0 ? "已设为不再关注" : `关注度已更新为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "更新失败";
+          toast.error(`更新关注度失败：${errMsg}`);
+        }
+      } catch {
+        toast.error("更新关注度失败：网络或服务器错误，请稍后重试");
+      }
+    },
+    []
+  );
+
+  const handleBatchMarketAttentionChange = useCallback(
+    async (marketIds: string[], level: number) => {
+      try {
+        const res = await fetch("/api/markets/attention/batch", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updates: marketIds.map((marketId) => ({ marketId, attentionLevel: level })),
+          }),
+        });
+        if (res.ok) {
+          const updates: Record<string, number> = {};
+          for (const id of marketIds) updates[id] = level;
+          setMarketAttentionMap((prev) => ({ ...prev, ...updates }));
+          toast.success(`已批量更新 ${marketIds.length} 个市场的关注度为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "批量更新失败";
+          toast.error(`批量更新关注度失败：${errMsg}`);
+        }
+      } catch {
+        toast.error("批量更新关注度失败：网络或服务器错误，请稍后重试");
+      }
+    },
+    []
+  );
+
   const handleUpdateMarkets = useCallback(async (eventId: string) => {
     try {
       const res = await fetch(`/api/events/${eventId}/markets/update`, {
@@ -301,6 +376,16 @@ export function MePageContent({ sites }: MePageContentProps) {
       if (adapterEmpty) {
         toast.info("该事件在平台暂无市场数据");
       } else if (apiNew.length > 0 || apiChanged.length > 0) {
+        setNewMarkets((prev) => {
+          const byId = new Map(prev.map((m) => [m.id, m]));
+          for (const m of apiNew) byId.set(m.id, m as MarketItem);
+          return Array.from(byId.values());
+        });
+        setChangedMarkets((prev) => {
+          const byId = new Map(prev.map((m) => [m.id, m]));
+          for (const m of apiChanged) byId.set(m.id, m as MarketItem);
+          return Array.from(byId.values());
+        });
         const parts: string[] = [];
         if (apiNew.length > 0) parts.push(`新增 ${apiNew.length} 个市场`);
         if (apiChanged.length > 0) parts.push(`变更 ${apiChanged.length} 个市场`);
@@ -329,9 +414,25 @@ export function MePageContent({ sites }: MePageContentProps) {
           toast.error(`批量更新所有市场失败：${errStr}`);
           return;
         }
+        const apiNew = Array.isArray(data?.newMarkets) ? data.newMarkets : [];
+        const apiChanged = Array.isArray(data?.changedMarkets) ? data.changedMarkets : [];
         const newCount = typeof data?.newCount === "number" ? data.newCount : 0;
         const changedCount = typeof data?.changedCount === "number" ? data.changedCount : 0;
         const failedCount = typeof data?.failedCount === "number" ? data.failedCount : 0;
+
+        if (apiNew.length > 0 || apiChanged.length > 0) {
+          setNewMarkets((prev) => {
+            const byId = new Map(prev.map((m) => [m.id, m]));
+            for (const m of apiNew) byId.set(m.id, m as MarketItem);
+            return Array.from(byId.values());
+          });
+          setChangedMarkets((prev) => {
+            const byId = new Map(prev.map((m) => [m.id, m]));
+            for (const m of apiChanged) byId.set(m.id, m as MarketItem);
+            return Array.from(byId.values());
+          });
+        }
+
         const parts: string[] = [];
         if (newCount > 0) parts.push(`新增 ${newCount} 个市场`);
         if (changedCount > 0) parts.push(`更新 ${changedCount} 个市场`);
@@ -539,6 +640,19 @@ export function MePageContent({ sites }: MePageContentProps) {
     }
     return map;
   }, [followedEvents]);
+
+  const marketsSectionNameMap = useMemo(
+    () => ({ ...followedSectionNameMap, ...browseSectionNameMap }),
+    [followedSectionNameMap, browseSectionNameMap]
+  );
+
+  const marketsSiteNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of sites) {
+      map[s.id] = s.name;
+    }
+    return map;
+  }, [sites]);
 
   const sections = selectedSiteId ? sectionsBySite[selectedSiteId] ?? [] : [];
   const enabledSections = sections.filter((s) => s.enabled);
@@ -892,6 +1006,45 @@ export function MePageContent({ sites }: MePageContentProps) {
               : "请先在事件更新页面点击「更新」拉取事件。"
           }
         />
+
+      {newMarkets.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            新增市场
+          </h2>
+          <MarketsTable
+            markets={newMarkets}
+            sectionNameMap={marketsSectionNameMap}
+            siteNameMap={sites.length > 1 ? marketsSiteNameMap : undefined}
+            attentionMap={marketAttentionMap}
+            onAttentionChange={handleMarketAttentionChange}
+            onBatchAttentionChange={handleBatchMarketAttentionChange}
+            pageSize={10}
+            selectable
+            enableSelectAll
+          />
+        </div>
+      )}
+
+      {changedMarkets.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            变更市场
+          </h2>
+          <MarketsTable
+            markets={changedMarkets}
+            sectionNameMap={marketsSectionNameMap}
+            siteNameMap={sites.length > 1 ? marketsSiteNameMap : undefined}
+            attentionMap={marketAttentionMap}
+            onAttentionChange={handleMarketAttentionChange}
+            onBatchAttentionChange={handleBatchMarketAttentionChange}
+            pageSize={10}
+            highlightColumns={["closeTime", "volume", "liquidity", "outcomes"]}
+            selectable
+            enableSelectAll
+          />
+        </div>
+      )}
       </div>
     </div>
   );
