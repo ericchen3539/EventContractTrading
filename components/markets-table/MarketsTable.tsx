@@ -637,6 +637,14 @@ export function MarketsTable({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => table.firstPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:hover:bg-slate-800"
+            >
+              第一页
+            </button>
+            <button
+              type="button"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
               className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:hover:bg-slate-800"
@@ -650,6 +658,14 @@ export function MarketsTable({
               className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:hover:bg-slate-800"
             >
               下一页
+            </button>
+            <button
+              type="button"
+              onClick={() => table.lastPage()}
+              disabled={!table.getCanNextPage()}
+              className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:hover:bg-slate-800"
+            >
+              最后一页
             </button>
           </div>
         </div>
