@@ -7,11 +7,12 @@ import type { MarketInput } from "@/lib/adapters/types";
 import { prisma } from "@/lib/db";
 import { getAdapter } from "@/lib/adapters";
 
-/** True if any semantic field (closeTime, volume, liquidity, outcomes) differs. Used for DB update. */
+/** True if any semantic field (closeTime, tradingCloseTime, volume, liquidity, outcomes) differs. Used for DB update. */
 function hasMarketSemanticChanges(
   input: MarketInput,
   existing: {
     closeTime: Date | null;
+    tradingCloseTime: Date | null;
     volume: number | null;
     liquidity: number | null;
     outcomes: unknown;
@@ -20,6 +21,10 @@ function hasMarketSemanticChanges(
   const inClose = input.closeTime?.getTime() ?? null;
   const exClose = existing.closeTime?.getTime() ?? null;
   if (inClose !== exClose) return true;
+
+  const inTradingClose = input.tradingCloseTime?.getTime() ?? null;
+  const exTradingClose = existing.tradingCloseTime?.getTime() ?? null;
+  if (inTradingClose !== exTradingClose) return true;
 
   const inVol = input.volume ?? null;
   const exVol = existing.volume ?? null;
@@ -70,6 +75,7 @@ export type PublicMarket = {
   title: string;
   eventTitle: string;
   closeTime?: string;
+  tradingCloseTime?: string;
   volume?: number;
   liquidity?: number;
   outcomes?: Record<string, number>;
@@ -87,6 +93,7 @@ function toPublicMarket(
     externalId: string;
     title: string;
     closeTime: Date | null;
+    tradingCloseTime: Date | null;
     volume: number | null;
     liquidity: number | null;
     outcomes: unknown;
@@ -103,6 +110,7 @@ function toPublicMarket(
     title: market.title,
     eventTitle,
     closeTime: market.closeTime?.toISOString() ?? undefined,
+    tradingCloseTime: market.tradingCloseTime?.toISOString() ?? undefined,
     volume: market.volume ?? undefined,
     liquidity: market.liquidity ?? undefined,
     outcomes: (market.outcomes as Record<string, number>) ?? undefined,
@@ -181,6 +189,7 @@ export async function updateMarketsForEvent(
           externalId: m.externalId,
           title: m.title,
           closeTime: m.closeTime ?? null,
+          tradingCloseTime: m.tradingCloseTime ?? null,
           volume: m.volume ?? null,
           liquidity: m.liquidity ?? null,
           outcomes: (m.outcomes ?? undefined) as Prisma.InputJsonValue,
@@ -200,6 +209,7 @@ export async function updateMarketsForEvent(
     } else if (
       hasMarketSemanticChanges(m, {
         closeTime: existingRecord.closeTime,
+        tradingCloseTime: existingRecord.tradingCloseTime,
         volume: existingRecord.volume,
         liquidity: existingRecord.liquidity,
         outcomes: existingRecord.outcomes,
@@ -210,6 +220,7 @@ export async function updateMarketsForEvent(
         data: {
           title: m.title,
           closeTime: m.closeTime ?? null,
+          tradingCloseTime: m.tradingCloseTime ?? null,
           volume: m.volume ?? null,
           liquidity: m.liquidity ?? null,
           outcomes: (m.outcomes ?? undefined) as Prisma.InputJsonValue,
@@ -227,13 +238,13 @@ export async function updateMarketsForEvent(
   }
 
   const sortedNew = [...newMarkets].sort((a, b) => {
-    const aT = a.closeTime?.getTime() ?? Infinity;
-    const bT = b.closeTime?.getTime() ?? Infinity;
+    const aT = a.tradingCloseTime?.getTime() ?? a.closeTime?.getTime() ?? Infinity;
+    const bT = b.tradingCloseTime?.getTime() ?? b.closeTime?.getTime() ?? Infinity;
     return aT - bT;
   });
   const sortedChanged = [...priceChangedMarkets].sort((a, b) => {
-    const aT = a.market.closeTime?.getTime() ?? Infinity;
-    const bT = b.market.closeTime?.getTime() ?? Infinity;
+    const aT = a.market.tradingCloseTime?.getTime() ?? a.market.closeTime?.getTime() ?? Infinity;
+    const bT = b.market.tradingCloseTime?.getTime() ?? b.market.closeTime?.getTime() ?? Infinity;
     return aT - bT;
   });
 

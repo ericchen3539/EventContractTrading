@@ -76,6 +76,7 @@ export async function GET(request: Request) {
           title: mc.title,
           eventTitle: mc.eventCache?.title,
           closeTime: mc.closeTime?.toISOString() ?? undefined,
+          tradingCloseTime: mc.tradingCloseTime?.toISOString() ?? undefined,
           volume: mc.volume ?? undefined,
           liquidity: mc.liquidity ?? undefined,
           outcomes: mc.outcomes ?? undefined,
@@ -86,8 +87,12 @@ export async function GET(request: Request) {
         };
       })
       .sort((a, b) => {
-        const aT = a.closeTime ? new Date(a.closeTime).getTime() : Infinity;
-        const bT = b.closeTime ? new Date(b.closeTime).getTime() : Infinity;
+        const aT = (a.tradingCloseTime ?? a.closeTime)
+          ? new Date(a.tradingCloseTime ?? a.closeTime!).getTime()
+          : Infinity;
+        const bT = (b.tradingCloseTime ?? b.closeTime)
+          ? new Date(b.tradingCloseTime ?? b.closeTime!).getTime()
+          : Infinity;
         return aT - bT;
       });
 

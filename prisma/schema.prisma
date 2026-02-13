@@ -107,14 +107,16 @@ model EventCache {
 }
 
 model Market {
-  id           String   @id @default(cuid())
-  eventCacheId String
-  siteId       String
-  sectionId    String
-  externalId   String
-  title        String
-  closeTime    DateTime?
-  volume       Float?
+  id               String    @id @default(cuid())
+  eventCacheId     String
+  siteId           String
+  sectionId        String
+  externalId       String
+  title            String
+  closeTime        DateTime?
+  /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). For Kalshi: expiration_time ?? close_time. */
+  tradingCloseTime DateTime?
+  volume           Float?
   liquidity    Float?
   outcomes     Json?
   raw          Json?

@@ -275,6 +275,8 @@ async function getMarketsForEvent(
   for (const m of openMarkets) {
     if (!m.ticker) continue;
     const ts = m.close_time ?? m.expiration_time;
+    /** Trading deadline from "Otherwise, it closes by..." in Timeline and payout. Prefer expiration_time. */
+    const tradingCloseTs = m.expiration_time ?? m.close_time;
 
     const volume = m.volume ?? 0;
     const liquidityRaw = m.liquidity_dollars ?? m.liquidity;
@@ -295,11 +297,13 @@ async function getMarketsForEvent(
     if (noVal !== undefined) outcomes.No = noVal;
 
     const closeTime = ts ? new Date(ts) : undefined;
+    const tradingCloseTime = tradingCloseTs ? new Date(tradingCloseTs) : undefined;
 
     results.push({
       externalId: m.ticker,
       title: m.title ?? m.ticker,
       closeTime,
+      tradingCloseTime,
       volume: typeof volume === "number" ? volume : undefined,
       liquidity: typeof liquidity === "number" ? liquidity : undefined,
       outcomes: Object.keys(outcomes).length ? outcomes : undefined,

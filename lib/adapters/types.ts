@@ -38,6 +38,8 @@ export interface MarketInput {
   externalId: string;
   title: string;
   closeTime?: Date;
+  /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). For Kalshi: expiration_time ?? close_time. */
+  tradingCloseTime?: Date;
   volume?: number;
   liquidity?: number;
   outcomes?: Record<string, number>;

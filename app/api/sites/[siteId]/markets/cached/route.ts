@@ -23,6 +23,7 @@ function toPublicMarket(market: {
   externalId: string;
   title: string;
   closeTime: Date | null;
+  tradingCloseTime: Date | null;
   volume: number | null;
   liquidity: number | null;
   outcomes: unknown;
@@ -38,6 +39,7 @@ function toPublicMarket(market: {
     title: market.title,
     eventTitle: market.eventCache?.title,
     closeTime: market.closeTime?.toISOString() ?? undefined,
+    tradingCloseTime: market.tradingCloseTime?.toISOString() ?? undefined,
     volume: market.volume ?? undefined,
     liquidity: market.liquidity ?? undefined,
     outcomes: market.outcomes ?? undefined,
@@ -94,7 +96,10 @@ async function handleGet(
   const where: {
     siteId: string;
     sectionId: { in: string[] };
-    closeTime?: { lte: Date };
+    OR?: Array<
+      | { tradingCloseTime: { lte: Date } }
+      | { tradingCloseTime: null; closeTime: { lte: Date } }
+    >;
   } = {
     siteId,
     sectionId: { in: sectionIds },
@@ -105,14 +110,17 @@ async function handleGet(
     const days = parseInt(daysParam, 10);
     if (days > 0) {
       const cutoff = new Date(Date.now() + days * 86400000);
-      where.closeTime = { lte: cutoff };
+      where.OR = [
+        { tradingCloseTime: { lte: cutoff } },
+        { tradingCloseTime: null, closeTime: { lte: cutoff } },
+      ];
     }
   }
 
   const markets = await prisma.market.findMany({
     where,
     include: { eventCache: { select: { title: true } } },
-    orderBy: { closeTime: "asc" },
+    orderBy: [{ tradingCloseTime: "asc" }, { closeTime: "asc" }],
   });
 
   return NextResponse.json(markets.map(toPublicMarket));
