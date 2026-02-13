@@ -619,6 +619,13 @@ export function MePageContent({ sites }: MePageContentProps) {
     return map;
   }, [selectedSiteId, sectionsBySite]);
 
+  /** Exclude events with attention 0 from browse table display. */
+  const browseEventsFiltered = useMemo(() => {
+    return browseEvents.filter(
+      (e) => (e.attentionLevel ?? browseAttentionMap[e.id] ?? 1) !== 0
+    );
+  }, [browseEvents, browseAttentionMap]);
+
   const browseSiteNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const s of sites) {
@@ -984,7 +991,7 @@ export function MePageContent({ sites }: MePageContentProps) {
         </div>
 
         <EventsTable
-          events={browseEvents}
+          events={browseEventsFiltered}
           sectionNameMap={browseSectionNameMap}
           siteNameMap={undefined}
           attentionMap={browseAttentionMap}

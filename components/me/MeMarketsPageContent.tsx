@@ -437,6 +437,13 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
     return map;
   }, [selectedSiteId, sectionsBySite]);
 
+  /** Exclude markets with attention 0 from browse table display. */
+  const browseMarketsFiltered = useMemo(() => {
+    return browseMarkets.filter(
+      (m) => (m.attentionLevel ?? browseAttentionMap[m.id] ?? 1) !== 0
+    );
+  }, [browseMarkets, browseAttentionMap]);
+
   const followedSectionNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const m of followedMarkets) {
@@ -779,7 +786,7 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
         </div>
 
         <MarketsTable
-          markets={browseMarkets}
+          markets={browseMarketsFiltered}
           sectionNameMap={browseSectionNameMap}
           siteNameMap={undefined}
           attentionMap={browseAttentionMap}
