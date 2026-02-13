@@ -22,7 +22,7 @@
 - **Site**：id, userId, baseUrl, name, loginUsername（加密，可选）、loginPassword（加密，可选）, adapterKey（如 `kalshi`）, createdAt
 - **Section**：id, siteId, externalId, name, urlOrSlug
 - **EventCache**：id, siteId, sectionId, externalId, title, description, endDate, volume, liquidity, outcomes（JSON）, raw（JSON）, fetchedAt
-- **Market**：id, eventCacheId, siteId, sectionId, externalId, title, closeTime, volume, liquidity, outcomes（JSON）, raw（JSON）, fetchedAt。与 EventCache 双向映射：事件可查其市场，市场可查其事件。用于与「更新最近市场」返回结果对比（以 externalId 为 Key）。
+- **Market**：id, eventCacheId, siteId, sectionId, externalId, title, closeTime, volume, liquidity, outcomes（JSON）, raw（JSON）, fetchedAt。与 EventCache 双向映射：事件可查其市场，市场可查其事件。用于与「更新所有市场」返回结果对比（以 externalId 为 Key）。
 
 多平台扩展：通过 `Site.adapterKey` 路由到不同 **Adapter**。
 

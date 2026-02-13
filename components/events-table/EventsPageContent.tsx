@@ -142,7 +142,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         const data = await res.json();
         if (!res.ok) {
           const errStr = typeof data?.error === "string" ? data.error : "更新市场失败";
-          toast.error(`更新最近市场失败：${errStr}`);
+          toast.error(`更新所有市场失败：${errStr}`);
           return;
         }
         const apiNew = Array.isArray(data?.newMarkets) ? data.newMarkets : [];
@@ -169,7 +169,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           toast.success("该事件暂无新增或变更的市场");
         }
       } catch {
-        toast.error("更新最近市场失败：网络或服务器错误，请稍后重试");
+        toast.error("更新所有市场失败：网络或服务器错误，请稍后重试");
       }
     },
     []

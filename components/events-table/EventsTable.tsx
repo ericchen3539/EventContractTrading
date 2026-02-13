@@ -61,7 +61,7 @@ interface EventsTableProps {
   onSelectionChange?: (ids: Set<string>) => void;
   /** Batch set attention level for selected events */
   onBatchAttentionChange?: (eventIds: string[], level: number) => void;
-  /** When provided, show "更新最近市场" column; called per event row */
+  /** When provided, show "更新所有市场" column; called per event row */
   onUpdateMarkets?: (eventId: string) => Promise<void>;
 }
 
@@ -158,7 +158,7 @@ function UpdateMarketsButton({
       disabled={loading}
       className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
     >
-      {loading ? "更新中…" : "更新最近市场"}
+      {loading ? "更新中…" : "更新所有市场"}
     </button>
   );
 }
@@ -421,7 +421,7 @@ export function EventsTable({
         ? [
             {
               id: "updateMarkets",
-              header: "更新最近市场",
+              header: "更新所有市场",
               cell: ({ row }: { row: { original: EventItem } }) => (
                 <UpdateMarketsButton
                   eventId={row.original.id}

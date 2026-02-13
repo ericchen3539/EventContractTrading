@@ -444,7 +444,7 @@ export function MarketsTable({
     const main = emptyStateMessage ?? "暂无市场数据";
     const sub =
       emptyStateSubMessage ??
-      (emptyStateMessage == null ? "请先在事件更新页面点击「更新最近市场」拉取市场。" : undefined);
+      (emptyStateMessage == null ? "请先在事件更新页面点击「更新所有市场」拉取市场。" : undefined);
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
         <p className="text-slate-600 dark:text-slate-400">{main}</p>

@@ -581,7 +581,7 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
               >
                 事件更新
               </Link>{" "}
-              点击事件的「更新最近市场」拉取市场，或在下方浏览并设置关注度
+              点击事件的「更新所有市场」拉取市场，或在下方浏览并设置关注度
             </p>
           </div>
         ) : (
@@ -793,12 +793,12 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
               ? "请选择站点和板块后点击加载"
               : loadingCached
                 ? "加载中…"
-                : "该站点/板块暂无缓存市场，请先在事件更新页面点击「更新最近市场」"
+                : "该站点/板块暂无缓存市场，请先在事件更新页面点击「更新所有市场」"
           }
           emptyStateSubMessage={
             !selectedSiteId || loadingCached
               ? undefined
-              : "请先在事件更新页面更新事件后，点击各事件的「更新最近市场」拉取市场。"
+              : "请先在事件更新页面更新事件后，点击各事件的「更新所有市场」拉取市场。"
           }
         />
       </div>
