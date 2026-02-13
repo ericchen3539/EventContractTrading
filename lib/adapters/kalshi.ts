@@ -249,21 +249,16 @@ async function getEventsAndMarkets(
   return results;
 }
 
-/** Tolerance in ms for matching close_time to eventCreatedAt (handles minor timestamp drift). */
-const CLOSE_TIME_MATCH_TOLERANCE_MS = 1000;
-
 /**
- * Fetch a single event by ticker and return markets whose close_time equals eventCreatedAt.
+ * Fetch all open markets for an event. Used to sync with the global Market table.
  * Calls GET /events/{event_ticker}?with_nested_markets=true.
+ * Returns all open markets (no close_time filter) so we can compare with Market table and insert/update.
  */
 async function getMarketsForEvent(
   _site: SiteInput,
   eventExternalId: string,
-  eventCreatedAt: Date | null
+  _eventCreatedAt: Date | null
 ): Promise<MarketInput[]> {
-  if (!eventCreatedAt) return [];
-
-  const targetTs = eventCreatedAt.getTime();
   const url = `${KALSHI_API_BASE}/events/${encodeURIComponent(eventExternalId)}?with_nested_markets=true`;
   const data = await fetchJson<{ event?: KalshiEvent; markets?: KalshiMarket[] }>(url);
 
@@ -275,8 +270,6 @@ async function getMarketsForEvent(
   for (const m of openMarkets) {
     const ts = m.close_time ?? m.expiration_time;
     if (!ts) continue;
-    const marketTs = new Date(ts).getTime();
-    if (Math.abs(marketTs - targetTs) > CLOSE_TIME_MATCH_TOLERANCE_MS) continue;
 
     const volume = m.volume ?? 0;
     const liquidityRaw = m.liquidity_dollars ?? m.liquidity;

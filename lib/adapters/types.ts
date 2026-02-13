@@ -55,8 +55,8 @@ export interface Adapter {
   ): Promise<EventMarketInput[]>;
 
   /**
-   * Fetch markets for an event whose close_time equals the event's closest trading end time.
-   * Filters markets where close_time === eventCreatedAt.
+   * Fetch all open markets for an event. Used to sync with the global Market table.
+   * Compare adapter response with Market table (by externalId) to insert new / update changed.
    */
   getMarketsForEvent(
     site: SiteInput,

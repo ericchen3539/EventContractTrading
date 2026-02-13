@@ -130,6 +130,7 @@ export async function PUT(
     const newMarkets: Awaited<ReturnType<typeof prisma.market.create>>[] = [];
     const changedMarkets: Awaited<ReturnType<typeof prisma.market.update>>[] = [];
 
+    /** Compare with global Market table (not adapter response). Key: externalId within this event. */
     const existing = await prisma.market.findMany({
       where: { eventCacheId: eventId },
     });
