@@ -127,7 +127,10 @@ export async function fetchKalshiAuthenticated<T>(
     return res.json() as Promise<T>;
   } catch (err) {
     clearTimeout(timeoutId);
-    throw err;
+    const cause = err instanceof Error && "cause" in err ? (err as { cause?: Error }).cause : undefined;
+    const causeMsg = cause instanceof Error ? cause.message : cause != null ? String(cause) : "";
+    const detail = causeMsg ? ` (${causeMsg})` : "";
+    throw new Error(`fetch failed${detail}`, { cause: err });
   }
 }
 

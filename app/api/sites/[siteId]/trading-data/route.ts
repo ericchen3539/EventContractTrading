@@ -64,9 +64,14 @@ export async function GET(
     return NextResponse.json(data);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[trading-data] GET error:", err);
+    const apiBase = getKalshiApiBase(site.baseUrl);
+    console.error("[trading-data] GET error:", { err, apiBase, baseUrl: site.baseUrl });
+    const hint =
+      message.includes("fetch failed") || message.includes("ECONNREFUSED") || message.includes("ENOTFOUND")
+        ? " 请检查网络连接；若使用 Demo 账户，站点 baseUrl 需包含 demo（如 https://demo.kalshi.com）。"
+        : "";
     return NextResponse.json(
-      { error: `Failed to fetch trading data: ${message}` },
+      { error: `Failed to fetch trading data: ${message}${hint}` },
       { status: 502 }
     );
   }
