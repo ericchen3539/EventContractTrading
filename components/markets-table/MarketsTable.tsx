@@ -304,13 +304,15 @@ export function MarketsTable({
           return v ?? "9999-12-31"; // "After the outcome occurs" sorts last (asc)
         },
         header: "交易截止时间",
-        cell: ({ row }) =>
-          formatTradingClose(row.original.nextTradingCloseTime ?? row.original.closeTime),
-      },
-      {
-        accessorKey: "settlementDate",
-        header: "结算日期",
-        cell: ({ row }) => formatDate(row.original.settlementDate),
+        cell: ({ row }) => {
+          const text = formatTradingClose(row.original.nextTradingCloseTime ?? row.original.closeTime);
+          const hasSettlementDate = Boolean(row.original.settlementDate);
+          return (
+            <span className={hasSettlementDate ? "" : "text-red-600 dark:text-red-400"}>
+              {text}
+            </span>
+          );
+        },
       },
       {
         accessorKey: "volume",
