@@ -15,7 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { MAX_SELECTED_MARKETS } from "@/lib/constants";
-import { formatDate, formatOutcomes, formatUsd } from "@/lib/format";
+import { formatDate, formatOutcomes, formatTradingClose, formatUsd } from "@/lib/format";
 import { CopyableText } from "@/components/ui/CopyableText";
 
 /** Market as returned by GET /api/sites/[siteId]/markets/cached or GET /api/me/followed-markets */
@@ -297,11 +297,13 @@ export function MarketsTable({
       },
       {
         id: "nextTradingCloseTime",
-        accessorFn: (row) =>
-          row.nextTradingCloseTime ?? row.closeTime ?? "",
+        accessorFn: (row) => {
+          const v = row.nextTradingCloseTime ?? row.closeTime;
+          return v ?? "9999-12-31"; // "After the outcome occurs" sorts last (asc)
+        },
         header: "交易截止时间",
         cell: ({ row }) =>
-          formatDate(row.original.nextTradingCloseTime ?? row.original.closeTime),
+          formatTradingClose(row.original.nextTradingCloseTime ?? row.original.closeTime),
       },
       {
         accessorKey: "volume",

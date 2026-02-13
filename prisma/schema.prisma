@@ -95,7 +95,7 @@ model EventCache {
   description String?              @db.Text
   /** open/active = displayable; closed/settled = not shown in user tables. */
   status      String?
-  /** First market's trading close time (最近交易截止时间 from Timeline and payout). */
+  /** First market's trading close time = "Market closes" in Timeline and payout (最近交易截止时间). */
   nextTradingCloseTime DateTime?
   endDate     DateTime?
   volume      Float?
@@ -122,7 +122,7 @@ model Market {
   /** open/active = displayable; closed/settled = not shown in user tables. */
   status           String?
   closeTime        DateTime?
-  /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). For Kalshi: expiration_time ?? close_time. */
+  /** Trading deadline = "Market closes" in Timeline and payout. For Kalshi: close_time. */
   nextTradingCloseTime DateTime?
   volume           Float?
   liquidity    Float?

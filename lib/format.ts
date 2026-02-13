@@ -52,3 +52,12 @@ export function formatDate(iso?: string | null): string {
     return iso;
   }
 }
+
+/** Display label when market closes "After the outcome occurs" (no fixed close time). */
+export const TRADING_CLOSE_AFTER_OUTCOME = "After the outcome occurs";
+
+/** Format trading close time: date or "After the outcome occurs" when null. */
+export function formatTradingClose(iso?: string | null): string {
+  if (!iso) return TRADING_CLOSE_AFTER_OUTCOME;
+  return formatDate(iso);
+}

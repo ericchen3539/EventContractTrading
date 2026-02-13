@@ -15,7 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { MAX_SELECTED_EVENTS } from "@/lib/constants";
-import { formatDate, formatOutcomes, formatUsd } from "@/lib/format";
+import { formatDate, formatOutcomes, formatTradingClose, formatUsd } from "@/lib/format";
 import { CopyableText } from "@/components/ui/CopyableText";
 
 /** Event as returned by GET /api/sites/[siteId]/events or GET /api/me/followed-events */
@@ -333,9 +333,11 @@ export function EventsTable({
           sectionNameMap[row.original.sectionId] ?? row.original.sectionId,
       },
       {
-        accessorKey: "nextTradingCloseTime",
+        id: "nextTradingCloseTime",
+        accessorFn: (row) =>
+          row.nextTradingCloseTime ?? "9999-12-31", // "After the outcome occurs" sorts last (asc)
         header: "最近交易截止时间",
-        cell: ({ row }) => formatDate(row.original.nextTradingCloseTime),
+        cell: ({ row }) => formatTradingClose(row.original.nextTradingCloseTime),
       },
       {
         accessorKey: "endDate",

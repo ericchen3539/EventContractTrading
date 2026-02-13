@@ -42,7 +42,7 @@ export interface MarketInput {
   /** open/active = displayable; closed/settled = not shown in user tables. */
   status?: string;
   closeTime?: Date;
-  /** Trading deadline from Timeline and payout ("Otherwise, it closes by..."). For Kalshi: expiration_time ?? close_time. */
+  /** Trading deadline = "Market closes" in Timeline and payout. For Kalshi: close_time. */
   nextTradingCloseTime?: Date;
   volume?: number;
   liquidity?: number;
