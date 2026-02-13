@@ -33,6 +33,17 @@ export interface EventMarketInput {
   raw?: Record<string, unknown>;
 }
 
+/** Market record for MarketCache; adapter returns this shape before DB upsert. */
+export interface MarketInput {
+  externalId: string;
+  title: string;
+  closeTime?: Date;
+  volume?: number;
+  liquidity?: number;
+  outcomes?: Record<string, number>;
+  raw?: Record<string, unknown>;
+}
+
 export interface Adapter {
   /** Fetch available sections for the site (no login required for Kalshi). */
   getSections(site: SiteInput): Promise<SectionInput[]>;
@@ -42,4 +53,14 @@ export interface Adapter {
     site: SiteInput,
     sectionIds: string[]
   ): Promise<EventMarketInput[]>;
+
+  /**
+   * Fetch markets for an event whose close_time equals the event's closest trading end time.
+   * Filters markets where close_time === eventCreatedAt.
+   */
+  getMarketsForEvent(
+    site: SiteInput,
+    eventExternalId: string,
+    eventCreatedAt: Date | null
+  ): Promise<MarketInput[]>;
 }

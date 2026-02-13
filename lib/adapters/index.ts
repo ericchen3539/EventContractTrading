@@ -8,7 +8,7 @@ const ADAPTERS: Record<string, Adapter> = {
   kalshi: kalshiAdapter,
 };
 
-export type { Adapter, EventMarketInput, SectionInput, SiteInput } from "./types";
+export type { Adapter, EventMarketInput, MarketInput, SectionInput, SiteInput } from "./types";
 export { kalshiAdapter } from "./kalshi";
 
 /** Get adapter by key; returns undefined if not found. */

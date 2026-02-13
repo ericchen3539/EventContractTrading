@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { EventsTable, type EventItem } from "./EventsTable";
+import { MarketsTable, type MarketItem } from "@/components/markets-table/MarketsTable";
 
 const EVENTS_PAGE_SITES_STORAGE_KEY = "events-page-selected-sites";
 
@@ -88,6 +89,8 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   >({});
   const [newEvents, setNewEvents] = useState<EventItem[]>([]);
   const [changedEvents, setChangedEvents] = useState<EventItem[]>([]);
+  const [newMarkets, setNewMarkets] = useState<MarketItem[]>([]);
+  const [changedMarkets, setChangedMarkets] = useState<MarketItem[]>([]);
   const [loadingSectionsBySite, setLoadingSectionsBySite] = useState<
     Record<string, boolean>
   >({});
@@ -95,6 +98,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   const [error, setError] = useState<string | null>(null);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
   const [attentionMap, setAttentionMap] = useState<Record<string, number>>({});
+  const [marketAttentionMap, setMarketAttentionMap] = useState<Record<string, number>>({});
 
   const fetchAttentionMap = useCallback(async () => {
     try {
@@ -111,6 +115,112 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
   useEffect(() => {
     fetchAttentionMap();
   }, [fetchAttentionMap]);
+
+  const fetchMarketAttentionMap = useCallback(async () => {
+    try {
+      const res = await fetch("/api/me/market-attention-map");
+      const data = await res.json();
+      if (res.ok && data && typeof data === "object") {
+        setMarketAttentionMap(data as Record<string, number>);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMarketAttentionMap();
+  }, [fetchMarketAttentionMap]);
+
+  const handleUpdateMarkets = useCallback(
+    async (eventId: string) => {
+      try {
+        const res = await fetch(`/api/events/${eventId}/markets/update`, {
+          method: "PUT",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const errStr = typeof data?.error === "string" ? data.error : "更新市场失败";
+          toast.error(`更新最近市场失败：${errStr}`);
+          return;
+        }
+        const apiNew = Array.isArray(data?.newMarkets) ? data.newMarkets : [];
+        const apiChanged = Array.isArray(data?.changedMarkets) ? data.changedMarkets : [];
+        if (apiNew.length > 0 || apiChanged.length > 0) {
+          setNewMarkets((prev) => {
+            const byId = new Map(prev.map((m) => [m.id, m]));
+            for (const m of apiNew) byId.set(m.id, m);
+            return Array.from(byId.values());
+          });
+          setChangedMarkets((prev) => {
+            const byId = new Map(prev.map((m) => [m.id, m]));
+            for (const m of apiChanged) byId.set(m.id, m);
+            return Array.from(byId.values());
+          });
+          const parts: string[] = [];
+          if (apiNew.length > 0) parts.push(`新增 ${apiNew.length} 个市场`);
+          if (apiChanged.length > 0) parts.push(`变更 ${apiChanged.length} 个市场`);
+          toast.success(parts.join("，"));
+        } else {
+          toast.success("该事件暂无新增或变更的市场");
+        }
+      } catch {
+        toast.error("更新最近市场失败：网络或服务器错误，请稍后重试");
+      }
+    },
+    []
+  );
+
+  const handleMarketAttentionChange = useCallback(
+    async (marketId: string, level: number) => {
+      try {
+        const res = await fetch(`/api/markets/${marketId}/attention`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attentionLevel: level }),
+        });
+        if (res.ok) {
+          setMarketAttentionMap((prev) => ({ ...prev, [marketId]: level }));
+          toast.success(level === 0 ? "已设为不再关注" : `关注度已更新为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "更新失败";
+          toast.error(`更新关注度失败：${errMsg}`);
+        }
+      } catch {
+        toast.error("更新关注度失败：网络或服务器错误，请稍后重试");
+      }
+    },
+    []
+  );
+
+  const handleBatchMarketAttentionChange = useCallback(
+    async (marketIds: string[], level: number) => {
+      try {
+        const res = await fetch("/api/markets/attention/batch", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            updates: marketIds.map((marketId) => ({ marketId, attentionLevel: level })),
+          }),
+        });
+        if (res.ok) {
+          const updates: Record<string, number> = {};
+          for (const id of marketIds) updates[id] = level;
+          setMarketAttentionMap((prev) => ({ ...prev, ...updates }));
+          toast.success(`已批量更新 ${marketIds.length} 个市场的关注度为 ${level}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = typeof data?.error === "string" ? data.error : "批量更新失败";
+          toast.error(`批量更新关注度失败：${errMsg}`);
+        }
+      } catch {
+        toast.error("批量更新关注度失败：网络或服务器错误，请稍后重试");
+      }
+    },
+    []
+  );
 
   const handleAttentionChange = useCallback(
     async (eventId: string, level: number) => {
@@ -486,6 +596,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             attentionMap={attentionMap}
             onAttentionChange={handleAttentionChange}
             onBatchAttentionChange={handleBatchAttentionChange}
+            onUpdateMarkets={handleUpdateMarkets}
             pageSize={10}
             selectable
             enableSelectAll
@@ -505,8 +616,48 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
             attentionMap={attentionMap}
             onAttentionChange={handleAttentionChange}
             onBatchAttentionChange={handleBatchAttentionChange}
+            onUpdateMarkets={handleUpdateMarkets}
             pageSize={10}
             highlightColumns={["createdAt", "endDate"]}
+            selectable
+            enableSelectAll
+          />
+        </div>
+      )}
+
+      {newMarkets.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            新增市场
+          </h2>
+          <MarketsTable
+            markets={newMarkets}
+            sectionNameMap={sectionNameMap}
+            siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
+            attentionMap={marketAttentionMap}
+            onAttentionChange={handleMarketAttentionChange}
+            onBatchAttentionChange={handleBatchMarketAttentionChange}
+            pageSize={10}
+            selectable
+            enableSelectAll
+          />
+        </div>
+      )}
+
+      {changedMarkets.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            变更市场
+          </h2>
+          <MarketsTable
+            markets={changedMarkets}
+            sectionNameMap={sectionNameMap}
+            siteNameMap={selectedSiteIds.length > 1 ? siteNameMap : undefined}
+            attentionMap={marketAttentionMap}
+            onAttentionChange={handleMarketAttentionChange}
+            onBatchAttentionChange={handleBatchMarketAttentionChange}
+            pageSize={10}
+            highlightColumns={["closeTime", "outcomes"]}
             selectable
             enableSelectAll
           />

@@ -61,6 +61,8 @@ interface EventsTableProps {
   onSelectionChange?: (ids: Set<string>) => void;
   /** Batch set attention level for selected events */
   onBatchAttentionChange?: (eventIds: string[], level: number) => void;
+  /** When provided, show "更新最近市场" column; called per event row */
+  onUpdateMarkets?: (eventId: string) => Promise<void>;
 }
 
 /** Format outcomes as "Yes: 65% | No: 35%" */
@@ -129,6 +131,38 @@ function AttentionCell({
   );
 }
 
+/** Button to update markets for an event; shows loading state. */
+function UpdateMarketsButton({
+  eventId,
+  onUpdateMarkets,
+}: {
+  eventId: string;
+  onUpdateMarkets: (eventId: string) => Promise<void>;
+}) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await onUpdateMarkets(eventId);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+    >
+      {loading ? "更新中…" : "更新最近市场"}
+    </button>
+  );
+}
+
 /** Format ISO date string */
 function formatDate(iso?: string | null): string {
   if (!iso) return "—";
@@ -167,6 +201,7 @@ export function EventsTable({
   maxSelected = MAX_SELECTED_EVENTS,
   onSelectionChange,
   onBatchAttentionChange,
+  onUpdateMarkets,
 }: EventsTableProps) {
   const highlightSet = useMemo(
     () => new Set(highlightColumns ?? []),
@@ -382,6 +417,21 @@ export function EventsTable({
             } as ColumnDef<EventItem>,
           ]
         : []),
+      ...(onUpdateMarkets
+        ? [
+            {
+              id: "updateMarkets",
+              header: "更新最近市场",
+              cell: ({ row }: { row: { original: EventItem } }) => (
+                <UpdateMarketsButton
+                  eventId={row.original.id}
+                  onUpdateMarkets={onUpdateMarkets}
+                />
+              ),
+              enableSorting: false,
+            } as ColumnDef<EventItem>,
+          ]
+        : []),
     ],
     [
       sectionNameMap,
@@ -393,6 +443,7 @@ export function EventsTable({
       maxSelected,
       selectAllLimited,
       rowSelection,
+      onUpdateMarkets,
     ]
   );
 

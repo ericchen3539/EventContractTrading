@@ -6,6 +6,7 @@
 import type {
   Adapter,
   EventMarketInput,
+  MarketInput,
   SectionInput,
   SiteInput,
 } from "./types";
@@ -248,7 +249,70 @@ async function getEventsAndMarkets(
   return results;
 }
 
+/** Tolerance in ms for matching close_time to eventCreatedAt (handles minor timestamp drift). */
+const CLOSE_TIME_MATCH_TOLERANCE_MS = 1000;
+
+/**
+ * Fetch a single event by ticker and return markets whose close_time equals eventCreatedAt.
+ * Calls GET /events/{event_ticker}?with_nested_markets=true.
+ */
+async function getMarketsForEvent(
+  _site: SiteInput,
+  eventExternalId: string,
+  eventCreatedAt: Date | null
+): Promise<MarketInput[]> {
+  if (!eventCreatedAt) return [];
+
+  const targetTs = eventCreatedAt.getTime();
+  const url = `${KALSHI_API_BASE}/events/${encodeURIComponent(eventExternalId)}?with_nested_markets=true`;
+  const data = await fetchJson<{ event?: KalshiEvent; markets?: KalshiMarket[] }>(url);
+
+  const event = data.event;
+  const markets = data.markets ?? event?.markets ?? [];
+  const openMarkets = markets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
+
+  const results: MarketInput[] = [];
+  for (const m of openMarkets) {
+    const ts = m.close_time ?? m.expiration_time;
+    if (!ts) continue;
+    const marketTs = new Date(ts).getTime();
+    if (Math.abs(marketTs - targetTs) > CLOSE_TIME_MATCH_TOLERANCE_MS) continue;
+
+    const volume = m.volume ?? 0;
+    const liquidityRaw = m.liquidity_dollars ?? m.liquidity;
+    const liquidity =
+      typeof liquidityRaw === "string"
+        ? parseFloat(liquidityRaw)
+        : typeof liquidityRaw === "number"
+          ? liquidityRaw / 100
+          : undefined;
+
+    const yesPrice =
+      m.last_price_dollars ?? m.yes_ask_dollars ?? m.yes_bid_dollars;
+    const yesVal = yesPrice ? parseFloat(String(yesPrice)) : undefined;
+    const noVal = yesVal !== undefined ? 1 - yesVal : undefined;
+
+    const outcomes: Record<string, number> = {};
+    if (yesVal !== undefined) outcomes.Yes = yesVal;
+    if (noVal !== undefined) outcomes.No = noVal;
+
+    const closeTime = ts ? new Date(ts) : undefined;
+
+    results.push({
+      externalId: m.ticker,
+      title: m.title ?? m.ticker,
+      closeTime,
+      volume: typeof volume === "number" ? volume : undefined,
+      liquidity: typeof liquidity === "number" ? liquidity : undefined,
+      outcomes: Object.keys(outcomes).length ? outcomes : undefined,
+      raw: { market: m, event } as Record<string, unknown>,
+    });
+  }
+  return results;
+}
+
 export const kalshiAdapter: Adapter = {
   getSections,
   getEventsAndMarkets,
+  getMarketsForEvent,
 };

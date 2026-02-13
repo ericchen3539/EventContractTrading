@@ -20,6 +20,7 @@ model User {
   sessions         Session[]
   sites            Site[]
   followedEvents   UserFollowedEvent[]
+  followedMarkets  UserFollowedMarket[]
 }
 
 model Account {
@@ -61,18 +62,20 @@ model Site {
   createdAt     DateTime     @default(now())
   sections      Section[]
   eventCaches   EventCache[]
+  marketCaches  MarketCache[]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Section {
-  id          String        @id @default(cuid())
-  siteId      String
-  externalId  String
-  name        String
-  urlOrSlug   String?
-  enabled     Boolean       @default(true)
-  eventCaches EventCache[]
+  id           String        @id @default(cuid())
+  siteId       String
+  externalId   String
+  name         String
+  urlOrSlug    String?
+  enabled      Boolean       @default(true)
+  eventCaches  EventCache[]
+  marketCaches MarketCache[]
 
   site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
@@ -98,14 +101,50 @@ model EventCache {
   site           Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
   section        Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   followedBy     UserFollowedEvent[]
+  marketCaches   MarketCache[]
 
   @@unique([siteId, sectionId, externalId])
+}
+
+model MarketCache {
+  id           String   @id @default(cuid())
+  eventCacheId String
+  siteId       String
+  sectionId    String
+  externalId   String
+  title        String
+  closeTime    DateTime?
+  volume       Float?
+  liquidity    Float?
+  outcomes     Json?
+  raw          Json?
+  fetchedAt    DateTime @default(now())
+
+  eventCache  EventCache          @relation(fields: [eventCacheId], references: [id], onDelete: Cascade)
+  site        Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  section     Section             @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  followedBy  UserFollowedMarket[]
+
+  @@unique([siteId, eventCacheId, externalId])
+}
+
+model UserFollowedMarket {
+  id             String   @id @default(cuid())
+  userId         String
+  marketCacheId  String
+  attentionLevel Int      @default(1)
+  createdAt      DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketCache MarketCache @relation(fields: [marketCacheId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, marketCacheId])
 }
 
 model UserFollowedEvent {
   id             String   @id @default(cuid())
   userId         String
-  eventCacheId  String
+  eventCacheId   String
   attentionLevel Int      @default(1)
   createdAt      DateTime @default(now())
 
