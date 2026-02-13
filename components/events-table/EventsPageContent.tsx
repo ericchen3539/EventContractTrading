@@ -147,7 +147,10 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         }
         const apiNew = Array.isArray(data?.newMarkets) ? data.newMarkets : [];
         const apiChanged = Array.isArray(data?.changedMarkets) ? data.changedMarkets : [];
-        if (apiNew.length > 0 || apiChanged.length > 0) {
+        const adapterEmpty = data?.adapterReturnedEmpty === true;
+        if (adapterEmpty) {
+          toast.info("该事件在平台暂无市场数据");
+        } else if (apiNew.length > 0 || apiChanged.length > 0) {
           setNewMarkets((prev) => {
             const byId = new Map(prev.map((m) => [m.id, m]));
             for (const m of apiNew) byId.set(m.id, m);
@@ -162,7 +165,7 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
           if (apiNew.length > 0) parts.push(`新增 ${apiNew.length} 个市场`);
           if (apiChanged.length > 0) parts.push(`变更 ${apiChanged.length} 个市场`);
           toast.success(parts.join("，"));
-        } else {
+        } else if (!adapterEmpty) {
           toast.success("该事件暂无新增或变更的市场");
         }
       } catch {

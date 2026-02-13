@@ -250,26 +250,31 @@ async function getEventsAndMarkets(
 }
 
 /**
- * Fetch all open markets for an event. Used to sync with the global Market table.
- * Calls GET /events/{event_ticker}?with_nested_markets=true.
- * Returns all open markets (no close_time filter) so we can compare with Market table and insert/update.
+ * Fetch all markets for an event. Used to sync with the global Market table.
+ * Tries GET /events/{event_ticker}?with_nested_markets=true first; if empty, falls back to GET /markets?event_ticker=xxx.
  */
 async function getMarketsForEvent(
   _site: SiteInput,
   eventExternalId: string,
   _eventCreatedAt: Date | null
 ): Promise<MarketInput[]> {
-  const url = `${KALSHI_API_BASE}/events/${encodeURIComponent(eventExternalId)}?with_nested_markets=true`;
-  const data = await fetchJson<{ event?: KalshiEvent; markets?: KalshiMarket[] }>(url);
+  const eventUrl = `${KALSHI_API_BASE}/events/${encodeURIComponent(eventExternalId)}?with_nested_markets=true`;
+  const eventData = await fetchJson<{ event?: KalshiEvent; markets?: KalshiMarket[] }>(eventUrl);
 
-  const event = data.event;
-  const markets = data.markets ?? event?.markets ?? [];
+  const event = eventData.event;
+  let markets = eventData.markets ?? event?.markets ?? [];
+
+  if (markets.length === 0) {
+    const marketsUrl = `${KALSHI_API_BASE}/markets?event_ticker=${encodeURIComponent(eventExternalId)}&limit=200`;
+    const marketsData = await fetchJson<{ markets?: KalshiMarket[] }>(marketsUrl);
+    markets = marketsData.markets ?? [];
+  }
   const openMarkets = markets.filter((m) => OPEN_MARKET_STATUSES.has(m.status));
 
   const results: MarketInput[] = [];
   for (const m of openMarkets) {
+    if (!m.ticker) continue;
     const ts = m.close_time ?? m.expiration_time;
-    if (!ts) continue;
 
     const volume = m.volume ?? 0;
     const liquidityRaw = m.liquidity_dollars ?? m.liquidity;

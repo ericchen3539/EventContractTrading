@@ -127,6 +127,13 @@ export async function PUT(
       );
     }
 
+    if (markets.length === 0) {
+      console.warn("[markets/update] Adapter returned 0 markets:", {
+        eventId,
+        externalId: event.externalId,
+      });
+    }
+
     const newMarkets: Awaited<ReturnType<typeof prisma.market.create>>[] = [];
     const changedMarkets: Awaited<ReturnType<typeof prisma.market.update>>[] = [];
 
@@ -193,6 +200,8 @@ export async function PUT(
     return NextResponse.json({
       newMarkets: sortedNew.map((m) => toPublicMarket(m, event.title)),
       changedMarkets: sortedChanged.map((m) => toPublicMarket(m, event.title)),
+      /** True when adapter returned 0 markets; helps frontend show a clearer message. */
+      adapterReturnedEmpty: markets.length === 0,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Internal server error";
