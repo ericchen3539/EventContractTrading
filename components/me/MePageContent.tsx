@@ -283,6 +283,36 @@ export function MePageContent({ sites }: MePageContentProps) {
     [fetchFollowedEvents]
   );
 
+  const handleUpdateMarkets = useCallback(async (eventId: string) => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/markets/update`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const errStr = typeof data?.error === "string" ? data.error : "更新市场失败";
+        toast.error(`更新最近市场失败：${errStr}`);
+        return;
+      }
+      const apiNew = Array.isArray(data?.newMarkets) ? data.newMarkets : [];
+      const apiChanged = Array.isArray(data?.changedMarkets) ? data.changedMarkets : [];
+      const adapterEmpty = data?.adapterReturnedEmpty === true;
+      if (adapterEmpty) {
+        toast.info("该事件在平台暂无市场数据");
+      } else if (apiNew.length > 0 || apiChanged.length > 0) {
+        const parts: string[] = [];
+        if (apiNew.length > 0) parts.push(`新增 ${apiNew.length} 个市场`);
+        if (apiChanged.length > 0) parts.push(`变更 ${apiChanged.length} 个市场`);
+        toast.success(parts.join("，"));
+      } else if (!adapterEmpty) {
+        toast.success("该事件暂无新增或变更的市场");
+      }
+    } catch {
+      toast.error("更新最近市场失败：网络或服务器错误，请稍后重试");
+    }
+  }, []);
+
   const followedAttentionMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const e of followedEvents) {
@@ -613,6 +643,7 @@ export function MePageContent({ sites }: MePageContentProps) {
             attentionMap={followedAttentionMap}
             onAttentionChange={handleAttentionChange}
             onBatchAttentionChange={handleBatchAttentionChange}
+            onUpdateMarkets={handleUpdateMarkets}
             pageSize={10}
             selectable
             enableSelectAll
@@ -802,6 +833,7 @@ export function MePageContent({ sites }: MePageContentProps) {
           attentionMap={browseAttentionMap}
           onAttentionChange={handleAttentionChange}
           onBatchAttentionChange={handleBatchAttentionChange}
+          onUpdateMarkets={handleUpdateMarkets}
           pageSize={10}
           selectable
           enableSelectAll
