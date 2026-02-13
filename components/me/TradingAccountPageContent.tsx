@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { formatDate, formatCents } from "@/lib/format";
@@ -13,6 +13,7 @@ import type {
 } from "@/lib/adapters/kalshi-portfolio";
 
 const PAGE_SIZE = 10;
+const STORAGE_KEY_LAST_SITE = "trading-account-selected-site-id";
 
 interface SiteItem {
   id: string;
@@ -221,28 +222,59 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
     [sites]
   );
 
-  const loadTradingData = useCallback(async () => {
-    if (!selectedSiteId) {
-      toast.error("请先选择站点");
-      return;
-    }
-    setLoading(true);
-    setData(null);
-    try {
-      const res = await fetch(`/api/sites/${selectedSiteId}/trading-data`);
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error ?? "加载失败");
+  const loadTradingData = useCallback(
+    async (siteIdOverride?: string) => {
+      const siteId = siteIdOverride ?? selectedSiteId;
+      if (!siteId) {
+        toast.error("请先选择站点");
         return;
       }
-      setData(json);
-      toast.success("加载成功");
-    } catch {
-      toast.error("加载失败：网络错误，请稍后重试");
-    } finally {
-      setLoading(false);
+      setLoading(true);
+      setData(null);
+      try {
+        const res = await fetch(`/api/sites/${siteId}/trading-data`);
+        const json = await res.json();
+        if (!res.ok) {
+          toast.error(json.error ?? "加载失败");
+          return;
+        }
+        setData(json);
+        toast.success("加载成功");
+      } catch {
+        toast.error("加载失败：网络错误，请稍后重试");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedSiteId]
+  );
+
+  const hasRestoredRef = useRef(false);
+  useEffect(() => {
+    if (sitesWithApiKey.length === 0 || hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+    const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY_LAST_SITE) : null;
+    if (stored && sitesWithApiKey.some((s) => s.id === stored)) {
+      setSelectedSiteId(stored);
+      loadTradingData(stored);
     }
-  }, [selectedSiteId]);
+  }, [sitesWithApiKey, loadTradingData]);
+
+  const handleSiteChange = useCallback(
+    (newSiteId: string | null) => {
+      setSelectedSiteId(newSiteId);
+      setData(null);
+      if (typeof window !== "undefined") {
+        if (newSiteId) {
+          localStorage.setItem(STORAGE_KEY_LAST_SITE, newSiteId);
+          loadTradingData(newSiteId);
+        } else {
+          localStorage.removeItem(STORAGE_KEY_LAST_SITE);
+        }
+      }
+    },
+    [loadTradingData]
+  );
 
   useEffect(() => {
     setEventTickerToTitle({});
@@ -330,10 +362,7 @@ export function TradingAccountPageContent({ sites }: TradingAccountPageContentPr
             </label>
             <select
               value={selectedSiteId ?? ""}
-              onChange={(e) => {
-                setSelectedSiteId(e.target.value || null);
-                setData(null);
-              }}
+              onChange={(e) => handleSiteChange(e.target.value || null)}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">请选择</option>
