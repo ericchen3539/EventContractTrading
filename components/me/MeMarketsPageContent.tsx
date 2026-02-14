@@ -8,8 +8,21 @@ import {
   type MarketItem,
 } from "@/components/markets-table/MarketsTable";
 import type { SiteItem, SectionItem } from "@/components/events-table/EventsPageContent";
+import { DEFAULT_NO_EVALUATION_THRESHOLD } from "@/lib/constants";
 
 const ATTENTION_FILTER_STORAGE_KEY = "me-markets-page-attention-filter";
+const POLL_INTERVAL_STORAGE_KEY = "me-markets-poll-interval-seconds";
+const GLOBAL_THRESHOLD_STORAGE_KEY = "me-markets-global-threshold";
+
+const POLL_PRESETS = [
+  { label: "5 分钟", seconds: 300 },
+  { label: "30 分钟", seconds: 1800 },
+  { label: "每小时", seconds: 3600 },
+  { label: "每 4 小时", seconds: 14400 },
+  { label: "每天", seconds: 86400 },
+] as const;
+const POLL_MIN = 300;
+const POLL_MAX = 604800;
 const TOP_DAYS_FILTER_STORAGE_KEY = "me-markets-page-top-days-filter";
 const NORMAL_DAYS_FILTER_STORAGE_KEY = "me-markets-page-normal-days-filter";
 const UNFOLLOWED_DAYS_FILTER_STORAGE_KEY =
@@ -141,6 +154,48 @@ function saveBrowsePrefsToStorage(prefs: BrowsePrefs) {
   }
 }
 
+function loadPollIntervalFromStorage(): number {
+  if (typeof window === "undefined") return 300;
+  try {
+    const raw = localStorage.getItem(POLL_INTERVAL_STORAGE_KEY);
+    if (!raw) return 300;
+    const v = parseInt(raw, 10);
+    if (!Number.isNaN(v) && v >= POLL_MIN && v <= POLL_MAX) return v;
+    return 300;
+  } catch {
+    return 300;
+  }
+}
+
+function savePollIntervalToStorage(seconds: number) {
+  try {
+    localStorage.setItem(POLL_INTERVAL_STORAGE_KEY, String(seconds));
+  } catch {
+    // ignore
+  }
+}
+
+function loadGlobalThresholdFromStorage(): number {
+  if (typeof window === "undefined") return DEFAULT_NO_EVALUATION_THRESHOLD;
+  try {
+    const raw = localStorage.getItem(GLOBAL_THRESHOLD_STORAGE_KEY);
+    if (!raw) return DEFAULT_NO_EVALUATION_THRESHOLD;
+    const v = parseFloat(raw);
+    if (!Number.isNaN(v) && v >= 0 && v <= 1) return v;
+    return DEFAULT_NO_EVALUATION_THRESHOLD;
+  } catch {
+    return DEFAULT_NO_EVALUATION_THRESHOLD;
+  }
+}
+
+function saveGlobalThresholdToStorage(value: number) {
+  try {
+    localStorage.setItem(GLOBAL_THRESHOLD_STORAGE_KEY, String(value));
+  } catch {
+    // ignore
+  }
+}
+
 type ViewMode = "top" | "normal" | "unfollowed";
 
 interface MeMarketsPageContentProps {
@@ -230,10 +285,22 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
   >({});
   const shouldAutoLoadBrowse = useRef(false);
 
+  const [monitorEnabled, setMonitorEnabled] = useState(false);
+  const [pollIntervalSeconds, setPollIntervalSeconds] = useState(300);
+  const [pollIntervalCustom, setPollIntervalCustom] = useState(300);
+  const [globalThreshold, setGlobalThreshold] = useState(DEFAULT_NO_EVALUATION_THRESHOLD);
+
   const [daysFilterPreset, setDaysFilterPreset] = useState<
     DaysFilterPreset
   >("3");
   const [daysFilterCustom, setDaysFilterCustom] = useState(1);
+
+  useEffect(() => {
+    const interval = loadPollIntervalFromStorage();
+    setPollIntervalSeconds(interval);
+    setPollIntervalCustom(interval);
+    setGlobalThreshold(loadGlobalThresholdFromStorage());
+  }, []);
 
   useEffect(() => {
     const prefs = loadBrowsePrefsFromStorage(siteIds);
@@ -308,6 +375,45 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
   useEffect(() => {
     fetchFollowedMarkets();
   }, [fetchFollowedMarkets]);
+
+  const pollPrices = useCallback(async () => {
+    if (followedMarkets.length === 0) return;
+    const ids = followedMarkets.slice(0, 50).map((m) => m.id);
+    try {
+      const res = await fetch(
+        `/api/markets/prices?marketIds=${ids.map(encodeURIComponent).join(",")}`
+      );
+      const data = await res.json();
+      if (!res.ok || typeof data !== "object") return;
+      setFollowedMarkets((prev) =>
+        prev.map((m) => {
+          const upd = data[m.id];
+          if (!upd?.outcomes) return m;
+          return { ...m, outcomes: upd.outcomes, fetchedAt: upd.fetchedAt ?? m.fetchedAt };
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }, [followedMarkets]);
+
+  useEffect(() => {
+    if (!monitorEnabled || followedMarkets.length === 0) return;
+    const interval = setInterval(pollPrices, pollIntervalSeconds * 1000);
+    return () => clearInterval(interval);
+  }, [monitorEnabled, followedMarkets.length, pollIntervalSeconds, pollPrices]);
+
+  const handleNoEvaluationChange = useCallback(
+    async (_marketId: string, _noProbability: number, _threshold: number) => {
+      fetchFollowedMarkets();
+    },
+    [fetchFollowedMarkets]
+  );
+
+  const handleGlobalThresholdChange = useCallback((value: number) => {
+    setGlobalThreshold(value);
+    saveGlobalThresholdToStorage(value);
+  }, []);
 
   const handleAttentionChange = useCallback(
     async (marketId: string, level: number) => {
@@ -789,6 +895,75 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
               );
             })()}
           </div>
+          <div className="ml-2 flex flex-wrap items-center gap-2">
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800">
+              <input
+                type="checkbox"
+                checked={monitorEnabled}
+                onChange={(e) => {
+                  const enabled = e.target.checked;
+                  setMonitorEnabled(enabled);
+                  if (enabled && followedMarkets.length > 0) pollPrices();
+                }}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+              />
+              实时监控
+            </label>
+            {monitorEnabled && (
+              <>
+                <span className="text-sm text-slate-600 dark:text-slate-400">刷新间隔</span>
+                <select
+                  value={
+                    POLL_PRESETS.some((p) => p.seconds === pollIntervalSeconds)
+                      ? String(pollIntervalSeconds)
+                      : "custom"
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "custom") {
+                      setPollIntervalSeconds(pollIntervalCustom);
+                    } else {
+                      const n = parseInt(v, 10);
+                      if (!Number.isNaN(n)) {
+                        setPollIntervalSeconds(n);
+                        setPollIntervalCustom(n);
+                        savePollIntervalToStorage(n);
+                      }
+                    }
+                  }}
+                  className="rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  {POLL_PRESETS.map((p) => (
+                    <option key={p.seconds} value={p.seconds}>
+                      {p.label}
+                    </option>
+                  ))}
+                  <option value="custom">自定义</option>
+                </select>
+                {!POLL_PRESETS.some((p) => p.seconds === pollIntervalSeconds) && (
+                  <span className="flex items-center gap-1 text-sm">
+                    <input
+                      type="number"
+                      min={5}
+                      max={10080}
+                      value={Math.round(pollIntervalSeconds / 60)}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!Number.isNaN(v) && v >= 5 && v <= 10080) {
+                          const sec = Math.min(POLL_MAX, Math.max(POLL_MIN, v * 60));
+                          setPollIntervalCustom(sec);
+                          setPollIntervalSeconds(sec);
+                          savePollIntervalToStorage(sec);
+                        }
+                      }}
+                      className="w-16 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                    分钟
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {loadingFollowed ? (
@@ -825,6 +1000,9 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
             attentionMap={followedAttentionMap}
             onAttentionChange={handleAttentionChange}
             onBatchAttentionChange={handleBatchAttentionChange}
+            globalThreshold={globalThreshold}
+            onGlobalThresholdChange={handleGlobalThresholdChange}
+            onNoEvaluationChange={handleNoEvaluationChange}
             pageSize={10}
             selectable
             enableSelectAll
@@ -1014,6 +1192,9 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
           attentionMap={browseAttentionMap}
           onAttentionChange={handleAttentionChange}
           onBatchAttentionChange={handleBatchAttentionChange}
+          globalThreshold={globalThreshold}
+          onGlobalThresholdChange={handleGlobalThresholdChange}
+          onNoEvaluationChange={handleNoEvaluationChange}
           pageSize={10}
           selectable
           enableSelectAll

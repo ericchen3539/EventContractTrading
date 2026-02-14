@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import type { Prisma } from "@prisma/client";
-import { isActiveStatus } from "@/lib/constants";
+import { isActiveStatus, DEFAULT_NO_EVALUATION_THRESHOLD } from "@/lib/constants";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSafeErrorMessage } from "@/lib/api-utils";
@@ -91,6 +91,10 @@ export async function GET(request: Request) {
             site: { select: { name: true } },
             section: { select: { name: true } },
             eventCache: { select: { title: true } },
+            noEvaluations: {
+              where: { userId: session.user.id },
+              take: 1,
+            },
           },
         },
       },
@@ -122,6 +126,9 @@ export async function GET(request: Request) {
           siteName: mc.site.name,
           sectionName: mc.section.name,
           attentionLevel: r.attentionLevel,
+          noEvaluation: mc.noEvaluations?.[0]?.noProbability ?? undefined,
+          threshold:
+            mc.noEvaluations?.[0]?.threshold ?? DEFAULT_NO_EVALUATION_THRESHOLD,
         };
       })
       .sort((a, b) => {

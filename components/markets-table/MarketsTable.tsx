@@ -14,7 +14,8 @@ import {
   type RowSelectionState,
 } from "@tanstack/react-table";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { MAX_SELECTED_MARKETS } from "@/lib/constants";
+import { toast } from "sonner";
+import { MAX_SELECTED_MARKETS, DEFAULT_NO_EVALUATION_THRESHOLD } from "@/lib/constants";
 import { formatDate, formatOutcomes, formatTradingClose, formatUsd } from "@/lib/format";
 import { CopyableText } from "@/components/ui/CopyableText";
 
@@ -41,6 +42,10 @@ export type MarketItem = {
   sectionName?: string;
   /** Previous outcomes when market had price change; used in 价格变更市场 for two-line display */
   oldOutcomes?: Record<string, number>;
+  /** User's No probability estimate (0-1). */
+  noEvaluation?: number;
+  /** Threshold for color highlight (0-1). When |noPrice - noEvaluation| > threshold, apply color. */
+  threshold?: number;
 };
 
 interface MarketsTableProps {
@@ -58,6 +63,68 @@ interface MarketsTableProps {
   maxSelected?: number;
   onSelectionChange?: (ids: Set<string>) => void;
   onBatchAttentionChange?: (marketIds: string[], level: number) => void;
+  /** Global threshold (0-1) used when saving new evaluation. Default 0.1. */
+  globalThreshold?: number;
+  /** Called when user changes global threshold. */
+  onGlobalThresholdChange?: (value: number) => void;
+  /** Called after no-evaluation saved; parent may refetch. */
+  onNoEvaluationChange?: (marketId: string, noProbability: number, threshold: number) => void;
+}
+
+function NoEvaluationCell({
+  marketId,
+  value,
+  threshold,
+  globalThreshold,
+  onSave,
+}: {
+  marketId: string;
+  value?: number;
+  threshold?: number;
+  globalThreshold: number;
+  onSave: (marketId: string, noProbability: number, threshold: number) => Promise<void>;
+}) {
+  const [pending, setPending] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const displayValue = pending ?? (value != null ? String(Math.round(value * 100)) : "");
+
+  const handleBlur = async () => {
+    if (pending == null) return;
+    const parsed = parseFloat(pending);
+    if (Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
+      setPending(null);
+      return;
+    }
+    const noProbability = Math.max(0, Math.min(1, parsed / 100));
+    const th = threshold ?? globalThreshold;
+    setPending(null);
+    setSaving(true);
+    try {
+      await onSave(marketId, noProbability, th);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleBlur();
+  };
+
+  return (
+    <input
+      type="number"
+      min={0}
+      max={100}
+      step={1}
+      value={displayValue}
+      onChange={(e) => setPending(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      placeholder="输入 0–100"
+      disabled={saving}
+      className="w-16 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-50"
+    />
+  );
 }
 
 function AttentionCell({
@@ -118,6 +185,9 @@ export function MarketsTable({
   selectable = false,
   enableSelectAll = false,
   maxSelected = MAX_SELECTED_MARKETS,
+  globalThreshold = DEFAULT_NO_EVALUATION_THRESHOLD,
+  onGlobalThresholdChange,
+  onNoEvaluationChange,
   onSelectionChange,
   onBatchAttentionChange,
 }: MarketsTableProps) {
@@ -328,7 +398,40 @@ export function MarketsTable({
         accessorKey: "outcomes",
         header: "价格/概率",
         cell: ({ row }) => {
-          const { outcomes, oldOutcomes } = row.original;
+          const { outcomes, oldOutcomes, noEvaluation, threshold } = row.original;
+          const th = threshold ?? DEFAULT_NO_EVALUATION_THRESHOLD;
+          const noPrice = outcomes?.No;
+          const diff =
+            noEvaluation != null && noPrice != null ? noPrice - noEvaluation : null;
+          const noColorClass =
+            diff != null && Math.abs(diff) > th
+              ? diff > 0
+                ? "text-red-600 dark:text-red-400"
+                : "text-green-600 dark:text-green-400"
+              : "";
+
+          const renderOutcomes = (o: Record<string, number> | undefined, extraClass = "") => {
+            if (!o || typeof o !== "object") return <span>—</span>;
+            const entries = Object.entries(o);
+            if (entries.length === 0) return <span>—</span>;
+            return (
+              <span className={extraClass}>
+                {entries.map(([k, v], i) => {
+                  const pct = typeof v === "number" ? Math.round(v * 100) : 0;
+                  const isNo = k.toLowerCase() === "no";
+                  const cls =
+                    isNo && noColorClass ? noColorClass : "text-slate-900 dark:text-slate-100";
+                  return (
+                    <span key={k}>
+                      {i > 0 && " | "}
+                      <span className={cls}>{k}: {pct}%</span>
+                    </span>
+                  );
+                })}
+              </span>
+            );
+          };
+
           if (oldOutcomes != null) {
             return (
               <div className="max-w-[240px] space-y-0.5 text-sm">
@@ -338,18 +441,57 @@ export function MarketsTable({
                 </div>
                 <div className="text-red-600 dark:text-red-400" title={formatOutcomes(outcomes)}>
                   <span className="text-red-600 dark:text-red-400">新 </span>
-                  {formatOutcomes(outcomes)}
+                  {renderOutcomes(outcomes)}
                 </div>
               </div>
             );
           }
           return (
             <div className="max-w-[200px] truncate text-sm" title={formatOutcomes(outcomes)}>
-              {formatOutcomes(outcomes)}
+              {renderOutcomes(outcomes)}
             </div>
           );
         },
       },
+      ...(onNoEvaluationChange
+        ? [
+            {
+              id: "noEvaluation",
+              header: "No 评估",
+              cell: ({ row }: { row: { original: MarketItem } }) => {
+          const m = row.original;
+          const handleSave = async (
+            marketId: string,
+            noProbability: number,
+            threshold: number
+          ) => {
+            const res = await fetch(`/api/markets/${marketId}/no-evaluation`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ noProbability, threshold }),
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              const msg = (data?.error as string) ?? "保存失败";
+              toast.error(`No 评估保存失败：${msg}`);
+              throw new Error(msg);
+            }
+            toast.success("No 评估已保存");
+            onNoEvaluationChange?.(marketId, noProbability, threshold);
+          };
+          return (
+            <NoEvaluationCell
+              marketId={m.id}
+              value={m.noEvaluation}
+              threshold={m.threshold}
+              globalThreshold={globalThreshold}
+              onSave={handleSave}
+            />
+          );
+        },
+      } as ColumnDef<MarketItem>,
+          ]
+        : []),
       {
         accessorKey: "fetchedAt",
         header: "更新时间",
@@ -380,6 +522,8 @@ export function MarketsTable({
       siteNameMap,
       attentionMap,
       onAttentionChange,
+      onNoEvaluationChange,
+      globalThreshold,
       selectable,
       enableSelectAll,
       maxSelected,
@@ -469,6 +613,25 @@ export function MarketsTable({
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
+        {onNoEvaluationChange != null && onGlobalThresholdChange != null && (
+          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            阈值
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round((globalThreshold ?? DEFAULT_NO_EVALUATION_THRESHOLD) * 100)}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!Number.isNaN(v) && v >= 0 && v <= 100) {
+                  onGlobalThresholdChange(Math.max(0, Math.min(1, v / 100)));
+                }
+              }}
+              className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </label>
+        )}
         {showBatchBar && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
             <span className="text-sm text-slate-700 dark:text-slate-300">

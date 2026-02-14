@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { updateMarketsForEvent } from "@/lib/events/update-markets";
 import { getSafeErrorMessage } from "@/lib/api-utils";
+import { DEFAULT_NO_EVALUATION_THRESHOLD } from "@/lib/constants";
 
 export async function PUT(
   _request: Request,
@@ -36,10 +37,31 @@ export async function PUT(
     }
 
     const result = await updateMarketsForEvent(eventId, session.user.id);
+    const allMarketIds = [
+      ...result.newMarkets.map((m) => m.id),
+      ...result.changedMarkets.map((m) => m.id),
+    ];
+    const evaluations = await prisma.marketNoEvaluation.findMany({
+      where: { userId: session.user.id, marketId: { in: allMarketIds } },
+    });
+    const evalMap = new Map(
+      evaluations.map((e) => [
+        e.marketId,
+        { noEvaluation: e.noProbability, threshold: e.threshold },
+      ])
+    );
+    const attachEval = (m: { id: string }) => {
+      const ev = evalMap.get(m.id);
+      return {
+        ...m,
+        noEvaluation: ev?.noEvaluation,
+        threshold: ev?.threshold ?? DEFAULT_NO_EVALUATION_THRESHOLD,
+      };
+    };
 
     return NextResponse.json({
-      newMarkets: result.newMarkets,
-      changedMarkets: result.changedMarkets,
+      newMarkets: result.newMarkets.map(attachEval),
+      changedMarkets: result.changedMarkets.map(attachEval),
       adapterReturnedEmpty: result.adapterReturnedEmpty,
     });
   } catch (err) {

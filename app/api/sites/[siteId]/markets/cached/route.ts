@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSafeErrorMessage } from "@/lib/api-utils";
+import { DEFAULT_NO_EVALUATION_THRESHOLD } from "@/lib/constants";
 
 async function getSiteForUser(siteId: string, userId: string) {
   return prisma.site.findFirst({
@@ -17,22 +18,26 @@ async function getSiteForUser(siteId: string, userId: string) {
   });
 }
 
-function toPublicMarket(market: {
-  id: string;
-  eventCacheId: string;
-  siteId: string;
-  sectionId: string;
-  externalId: string;
-  title: string;
-  closeTime: Date | null;
-  nextTradingCloseTime: Date | null;
-  settlementDate: Date | null;
-  volume: number | null;
-  liquidity: number | null;
-  outcomes: unknown;
-  fetchedAt: Date;
-  eventCache?: { title: string } | null;
-}) {
+function toPublicMarket(
+  market: {
+    id: string;
+    eventCacheId: string;
+    siteId: string;
+    sectionId: string;
+    externalId: string;
+    title: string;
+    closeTime: Date | null;
+    nextTradingCloseTime: Date | null;
+    settlementDate: Date | null;
+    volume: number | null;
+    liquidity: number | null;
+    outcomes: unknown;
+    fetchedAt: Date;
+    eventCache?: { title: string } | null;
+  },
+  evalMap: Map<string, { noProbability: number; threshold: number }>
+) {
+  const ev = evalMap.get(market.id);
   return {
     id: market.id,
     eventCacheId: market.eventCacheId,
@@ -48,6 +53,8 @@ function toPublicMarket(market: {
     liquidity: market.liquidity ?? undefined,
     outcomes: market.outcomes ?? undefined,
     fetchedAt: market.fetchedAt.toISOString(),
+    noEvaluation: ev?.noProbability,
+    threshold: ev?.threshold ?? DEFAULT_NO_EVALUATION_THRESHOLD,
   };
 }
 
@@ -132,5 +139,16 @@ async function handleGet(
     orderBy: [{ nextTradingCloseTime: "asc" }, { closeTime: "asc" }],
   });
 
-  return NextResponse.json(markets.map(toPublicMarket));
+  const marketIds = markets.map((m) => m.id);
+  const evaluations = await prisma.marketNoEvaluation.findMany({
+    where: { userId: session.user.id, marketId: { in: marketIds } },
+  });
+  const evalMap = new Map(
+    evaluations.map((e) => [
+      e.marketId,
+      { noProbability: e.noProbability, threshold: e.threshold },
+    ])
+  );
+
+  return NextResponse.json(markets.map((m) => toPublicMarket(m, evalMap)));
 }

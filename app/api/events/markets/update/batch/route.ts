@@ -8,7 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { updateMarketsForEvent } from "@/lib/events/update-markets";
-import { MAX_SELECTED_EVENTS } from "@/lib/constants";
+import { MAX_SELECTED_EVENTS, DEFAULT_NO_EVALUATION_THRESHOLD } from "@/lib/constants";
 import { getSafeErrorMessage } from "@/lib/api-utils";
 
 const BATCH_CONCURRENCY = 3;
@@ -81,13 +81,35 @@ export async function PUT(request: Request) {
 
     failCount += eventIds.length - authorizedIds.length;
 
+    const allMarketIds = [
+      ...allNew.map((m) => m.id),
+      ...allChanged.map((m) => m.id),
+    ];
+    const evaluations = await prisma.marketNoEvaluation.findMany({
+      where: { userId: session.user!.id, marketId: { in: allMarketIds } },
+    });
+    const evalMap = new Map(
+      evaluations.map((e) => [
+        e.marketId,
+        { noEvaluation: e.noProbability, threshold: e.threshold },
+      ])
+    );
+    const attachEval = (m: { id: string }) => {
+      const ev = evalMap.get(m.id);
+      return {
+        ...m,
+        noEvaluation: ev?.noEvaluation,
+        threshold: ev?.threshold ?? DEFAULT_NO_EVALUATION_THRESHOLD,
+      };
+    };
+
     return NextResponse.json({
       newCount: allNew.length,
       changedCount: allChanged.length,
       successCount,
       failedCount: failCount,
-      newMarkets: allNew,
-      changedMarkets: allChanged,
+      newMarkets: allNew.map(attachEval),
+      changedMarkets: allChanged.map(attachEval),
     });
   } catch (err) {
     const msg = getSafeErrorMessage(err);
