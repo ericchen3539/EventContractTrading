@@ -623,7 +623,7 @@ export function MarketsTable({
         />
         {onNoEvaluationChange != null && onGlobalThresholdChange != null && (
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-            阈值
+            No选项评估与价格相差触发警报值%
             <input
               type="number"
               min={0}
