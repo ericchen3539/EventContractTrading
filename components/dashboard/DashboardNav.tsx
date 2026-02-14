@@ -33,7 +33,7 @@ function LogOutIcon({ className }: { className?: string }) {
 
 /**
  * Dashboard navigation: links to Sites management and Events table.
- * User name trigger opens dropdown with Account Settings and Log Out.
+ * User name trigger opens dropdown with 账户设置 and Log Out.
  */
 export function DashboardNav() {
   const pathname = usePathname();
@@ -144,7 +144,7 @@ export function DashboardNav() {
                   onClick={() => setDropdownOpen(false)}
                   role="menuitem"
                 >
-                  Account Settings
+                  账户设置
                 </Link>
               </div>
               <div className="border-t border-slate-200 dark:border-slate-700" />
