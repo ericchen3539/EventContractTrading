@@ -10,7 +10,10 @@ import {
 import type { SiteItem, SectionItem } from "@/components/events-table/EventsPageContent";
 
 const ATTENTION_FILTER_STORAGE_KEY = "me-markets-page-attention-filter";
-const FOLLOWED_DAYS_FILTER_STORAGE_KEY = "me-markets-page-followed-days-filter";
+const TOP_DAYS_FILTER_STORAGE_KEY = "me-markets-page-top-days-filter";
+const NORMAL_DAYS_FILTER_STORAGE_KEY = "me-markets-page-normal-days-filter";
+const UNFOLLOWED_DAYS_FILTER_STORAGE_KEY =
+  "me-markets-page-unfollowed-days-filter";
 const BROWSE_PREFS_STORAGE_KEY = "me-markets-page-browse-prefs";
 
 type AttentionFilterPreset = "0" | "1" | "2" | "3" | "4" | "5" | "custom";
@@ -54,13 +57,13 @@ function saveAttentionFilterToStorage(
   }
 }
 
-function loadFollowedDaysFromStorage(): {
+function loadDaysFromStorage(storageKey: string): {
   preset: DaysFilterPreset;
   custom: number;
 } {
   if (typeof window === "undefined") return { preset: "all", custom: 1 };
   try {
-    const raw = localStorage.getItem(FOLLOWED_DAYS_FILTER_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return { preset: "all", custom: 1 };
     const parsed = JSON.parse(raw) as { preset?: string; custom?: number };
     const preset = ["3", "7", "14", "30", "all", "custom"].includes(
@@ -80,13 +83,14 @@ function loadFollowedDaysFromStorage(): {
   }
 }
 
-function saveFollowedDaysToStorage(
+function saveDaysToStorage(
+  storageKey: string,
   preset: DaysFilterPreset,
   custom: number
 ) {
   try {
     localStorage.setItem(
-      FOLLOWED_DAYS_FILTER_STORAGE_KEY,
+      storageKey,
       JSON.stringify({ preset, custom })
     );
   } catch {
@@ -158,14 +162,24 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
     setAttentionFilterCustom(custom);
   }, []);
 
-  const [followedDaysPreset, setFollowedDaysPreset] =
+  const [topDaysPreset, setTopDaysPreset] = useState<DaysFilterPreset>("all");
+  const [topDaysCustom, setTopDaysCustom] = useState(1);
+  const [normalDaysPreset, setNormalDaysPreset] = useState<DaysFilterPreset>("all");
+  const [normalDaysCustom, setNormalDaysCustom] = useState(1);
+  const [unfollowedDaysPreset, setUnfollowedDaysPreset] =
     useState<DaysFilterPreset>("all");
-  const [followedDaysCustom, setFollowedDaysCustom] = useState(1);
+  const [unfollowedDaysCustom, setUnfollowedDaysCustom] = useState(1);
 
   useEffect(() => {
-    const { preset, custom } = loadFollowedDaysFromStorage();
-    setFollowedDaysPreset(preset);
-    setFollowedDaysCustom(custom);
+    const top = loadDaysFromStorage(TOP_DAYS_FILTER_STORAGE_KEY);
+    const normal = loadDaysFromStorage(NORMAL_DAYS_FILTER_STORAGE_KEY);
+    const unfollowed = loadDaysFromStorage(UNFOLLOWED_DAYS_FILTER_STORAGE_KEY);
+    setTopDaysPreset(top.preset);
+    setTopDaysCustom(top.custom);
+    setNormalDaysPreset(normal.preset);
+    setNormalDaysCustom(normal.custom);
+    setUnfollowedDaysPreset(unfollowed.preset);
+    setUnfollowedDaysCustom(unfollowed.custom);
   }, []);
 
   const attentionFilter =
@@ -173,14 +187,31 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
       ? attentionFilterCustom
       : parseInt(attentionFilterPreset, 10);
 
-  const followedDaysFilter: number | "all" =
-    followedDaysPreset === "custom"
-      ? (Number.isFinite(followedDaysCustom) && followedDaysCustom >= 1
-          ? Math.min(365, Math.floor(followedDaysCustom))
+  const toDaysFilter = (
+    preset: DaysFilterPreset,
+    custom: number
+  ): number | "all" =>
+    preset === "custom"
+      ? (Number.isFinite(custom) && custom >= 1
+          ? Math.min(365, Math.floor(custom))
           : 7)
-      : followedDaysPreset === "all"
+      : preset === "all"
         ? "all"
-        : parseInt(followedDaysPreset, 10) || 7;
+        : parseInt(preset, 10) || 7;
+
+  const topDaysFilter = toDaysFilter(topDaysPreset, topDaysCustom);
+  const normalDaysFilter = toDaysFilter(normalDaysPreset, normalDaysCustom);
+  const unfollowedDaysFilter = toDaysFilter(
+    unfollowedDaysPreset,
+    unfollowedDaysCustom
+  );
+
+  const followedDaysFilter =
+    viewMode === "top"
+      ? topDaysFilter
+      : viewMode === "normal"
+        ? normalDaysFilter
+        : unfollowedDaysFilter;
 
   const siteIds = useMemo(() => sites.map((s) => s.id), [sites]);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
@@ -636,58 +667,127 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
             <span className="text-sm text-slate-600 dark:text-slate-400">
               天数范围（最近交易截止时间）
             </span>
-            {(["3", "7", "14", "30", "all"] as const).map((p) => (
-              <label
-                key={p}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
-              >
-                <input
-                  type="radio"
-                  name="followed-market-days-filter"
-                  checked={followedDaysPreset === p}
-                  onChange={() => {
-                    setFollowedDaysPreset(p);
-                    saveFollowedDaysToStorage(p, followedDaysCustom);
-                  }}
-                  className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
-                />
-                {p === "all" ? "全部" : `${p}天`}
-              </label>
-            ))}
-            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800">
-              <input
-                type="radio"
-                name="followed-market-days-filter"
-                checked={followedDaysPreset === "custom"}
-                onChange={() => {
-                  setFollowedDaysPreset("custom");
-                  saveFollowedDaysToStorage("custom", followedDaysCustom);
-                }}
-                className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
-              />
-              自定义
-            </label>
-            {followedDaysPreset === "custom" && (
-              <>
-                <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={followedDaysCustom}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    if (!Number.isNaN(v) && v >= 1) {
-                      setFollowedDaysCustom(Math.min(365, v));
-                      saveFollowedDaysToStorage("custom", Math.min(365, v));
-                    }
-                  }}
-                  className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
-                />
-                <span className="text-sm text-slate-500 dark:text-slate-400">
-                  天
-                </span>
-              </>
-            )}
+            {(["3", "7", "14", "30", "all"] as const).map((p) => {
+              const preset =
+                viewMode === "top"
+                  ? topDaysPreset
+                  : viewMode === "normal"
+                    ? normalDaysPreset
+                    : unfollowedDaysPreset;
+              const custom =
+                viewMode === "top"
+                  ? topDaysCustom
+                  : viewMode === "normal"
+                    ? normalDaysCustom
+                    : unfollowedDaysCustom;
+              const storageKey =
+                viewMode === "top"
+                  ? TOP_DAYS_FILTER_STORAGE_KEY
+                  : viewMode === "normal"
+                    ? NORMAL_DAYS_FILTER_STORAGE_KEY
+                    : UNFOLLOWED_DAYS_FILTER_STORAGE_KEY;
+              const setPreset =
+                viewMode === "top"
+                  ? setTopDaysPreset
+                  : viewMode === "normal"
+                    ? setNormalDaysPreset
+                    : setUnfollowedDaysPreset;
+              const setCustom =
+                viewMode === "top"
+                  ? setTopDaysCustom
+                  : viewMode === "normal"
+                    ? setNormalDaysCustom
+                    : setUnfollowedDaysCustom;
+              return (
+                <label
+                  key={p}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
+                >
+                  <input
+                    type="radio"
+                    name="followed-market-days-filter"
+                    checked={preset === p}
+                    onChange={() => {
+                      setPreset(p);
+                      saveDaysToStorage(storageKey, p, custom);
+                    }}
+                    className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                  />
+                  {p === "all" ? "全部" : `${p}天`}
+                </label>
+              );
+            })}
+            {(() => {
+              const preset =
+                viewMode === "top"
+                  ? topDaysPreset
+                  : viewMode === "normal"
+                    ? normalDaysPreset
+                    : unfollowedDaysPreset;
+              const custom =
+                viewMode === "top"
+                  ? topDaysCustom
+                  : viewMode === "normal"
+                    ? normalDaysCustom
+                    : unfollowedDaysCustom;
+              const storageKey =
+                viewMode === "top"
+                  ? TOP_DAYS_FILTER_STORAGE_KEY
+                  : viewMode === "normal"
+                    ? NORMAL_DAYS_FILTER_STORAGE_KEY
+                    : UNFOLLOWED_DAYS_FILTER_STORAGE_KEY;
+              const setPreset =
+                viewMode === "top"
+                  ? setTopDaysPreset
+                  : viewMode === "normal"
+                    ? setNormalDaysPreset
+                    : setUnfollowedDaysPreset;
+              const setCustom =
+                viewMode === "top"
+                  ? setTopDaysCustom
+                  : viewMode === "normal"
+                    ? setNormalDaysCustom
+                    : setUnfollowedDaysCustom;
+              return (
+                <>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800">
+                    <input
+                      type="radio"
+                      name="followed-market-days-filter"
+                      checked={preset === "custom"}
+                      onChange={() => {
+                        setPreset("custom");
+                        saveDaysToStorage(storageKey, "custom", custom);
+                      }}
+                      className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                    />
+                    自定义
+                  </label>
+                  {preset === "custom" && (
+                    <>
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={custom}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          if (!Number.isNaN(v) && v >= 1) {
+                            const clamped = Math.min(365, v);
+                            setCustom(clamped);
+                            saveDaysToStorage(storageKey, "custom", clamped);
+                          }
+                        }}
+                        className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
+                      />
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
+                        天
+                      </span>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
 
