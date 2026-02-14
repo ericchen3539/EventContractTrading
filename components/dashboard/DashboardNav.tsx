@@ -39,7 +39,9 @@ export function DashboardNav() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const brandDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -56,11 +58,25 @@ export function DashboardNav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownOpen]);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        brandDropdownRef.current &&
+        !brandDropdownRef.current.contains(event.target as Node)
+      ) {
+        setBrandDropdownOpen(false);
+      }
+    }
+    if (brandDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [brandDropdownOpen]);
+
   const displayName =
     session?.user?.name || session?.user?.email || "用户";
 
   const navLinks = [
-    { href: "/guide", label: "用户指南" },
     { href: "/me/events", label: "用户事件" },
     { href: "/me/markets", label: "用户市场" },
     { href: "/me/trading", label: "交易账户" },
@@ -81,12 +97,40 @@ export function DashboardNav() {
     <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <nav className="flex items-center gap-6">
-          <Link
-            href="/sites"
-            className="text-lg font-semibold text-blue-600 dark:text-blue-400"
-          >
-            Event Contract
-          </Link>
+          <div className="relative" ref={brandDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setBrandDropdownOpen((prev) => !prev)}
+              className="text-lg font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              aria-expanded={brandDropdownOpen}
+              aria-haspopup="true"
+            >
+              预测交易
+            </button>
+            {brandDropdownOpen && (
+              <div
+                className="absolute left-0 top-full z-50 mt-1.5 min-w-[160px] rounded-lg border border-slate-200 bg-white py-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+                role="menu"
+              >
+                <Link
+                  href="/me/markets"
+                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
+                  onClick={() => setBrandDropdownOpen(false)}
+                  role="menuitem"
+                >
+                  首页
+                </Link>
+                <Link
+                  href="/guide"
+                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
+                  onClick={() => setBrandDropdownOpen(false)}
+                  role="menuitem"
+                >
+                  用户指南
+                </Link>
+              </div>
+            )}
+          </div>
           <div className="flex gap-6">
             {navLinks.map(({ href, label }) => {
               const isActive =
