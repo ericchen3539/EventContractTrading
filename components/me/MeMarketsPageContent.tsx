@@ -995,6 +995,7 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
           <MarketsTable
             markets={followedMarkets}
             sectionNameMap={followedSectionNameMap}
+            browseContextHint="正在浏览你关注的市场"
             siteNameMap={
               Object.keys(followedSiteNameMap).length > 1
                 ? followedSiteNameMap
@@ -1197,6 +1198,7 @@ export function MeMarketsPageContent({ sites }: MeMarketsPageContentProps) {
         <MarketsTable
           markets={browseMarketsFiltered}
           sectionNameMap={browseSectionNameMap}
+          browseContextHint="正在浏览站点缓存中的市场"
           siteNameMap={undefined}
           attentionMap={browseAttentionMap}
           onAttentionChange={handleAttentionChange}

@@ -1022,6 +1022,7 @@ export function MePageContent({ sites }: MePageContentProps) {
           <EventsTable
             events={followedEvents}
             sectionNameMap={followedSectionNameMap}
+            browseContextHint="正在浏览你关注的事件"
             siteNameMap={
               Object.keys(followedSiteNameMap).length > 1
                 ? followedSiteNameMap
@@ -1223,6 +1224,7 @@ export function MePageContent({ sites }: MePageContentProps) {
         <EventsTable
           events={browseEventsFiltered}
           sectionNameMap={browseSectionNameMap}
+          browseContextHint="正在浏览站点缓存中的事件"
           siteNameMap={undefined}
           attentionMap={browseAttentionMap}
           onAttentionChange={handleAttentionChange}

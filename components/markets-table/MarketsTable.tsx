@@ -69,6 +69,8 @@ interface MarketsTableProps {
   onGlobalThresholdChange?: (value: number) => void;
   /** Called after no-evaluation saved; parent may refetch. */
   onNoEvaluationChange?: (marketId: string, noProbability: number, threshold: number) => void;
+  /** Hint shown near toolbar, e.g. "正在浏览你关注的市场" or "正在浏览站点缓存中的市场" */
+  browseContextHint?: string;
 }
 
 function NoEvaluationCell({
@@ -190,6 +192,7 @@ export function MarketsTable({
   onNoEvaluationChange,
   onSelectionChange,
   onBatchAttentionChange,
+  browseContextHint,
 }: MarketsTableProps) {
   const highlightSet = useMemo(
     () => new Set(highlightColumns ?? []),
@@ -636,6 +639,11 @@ export function MarketsTable({
               className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
+        )}
+        {browseContextHint != null && browseContextHint !== "" && (
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            {browseContextHint}
+          </span>
         )}
         {showBatchBar && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">

@@ -67,6 +67,8 @@ interface EventsTableProps {
   onUpdateMarkets?: (eventId: string) => Promise<void>;
   /** Batch update all markets for selected events; called with concurrency control by parent */
   onBatchUpdateMarkets?: (eventIds: string[]) => Promise<void>;
+  /** Hint shown near toolbar, e.g. "正在浏览你关注的事件" or "正在浏览站点缓存中的事件" */
+  browseContextHint?: string;
 }
 
 /** Attention level input: non-negative integer, 0 = 不再关注 */
@@ -168,6 +170,7 @@ export function EventsTable({
   onBatchAttentionChange,
   onUpdateMarkets,
   onBatchUpdateMarkets,
+  browseContextHint,
 }: EventsTableProps) {
   const highlightSet = useMemo(
     () => new Set(highlightColumns ?? []),
@@ -521,6 +524,11 @@ export function EventsTable({
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
+        {browseContextHint != null && browseContextHint !== "" && (
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            {browseContextHint}
+          </span>
+        )}
         {showBatchBar && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
             <span className="text-sm text-slate-700 dark:text-slate-300">
