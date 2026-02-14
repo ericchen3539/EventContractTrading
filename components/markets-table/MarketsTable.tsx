@@ -641,7 +641,7 @@ export function MarketsTable({
           </label>
         )}
         {browseContextHint != null && browseContextHint !== "" && (
-          <span className="text-sm text-slate-500 dark:text-slate-400">
+          <span className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 dark:border-blue-600 dark:bg-blue-500/25 dark:text-blue-200">
             {browseContextHint}
           </span>
         )}
