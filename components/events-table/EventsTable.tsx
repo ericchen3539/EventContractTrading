@@ -192,12 +192,17 @@ export function EventsTable({
   });
   useEffect(() => {
     if (paginationEnabled) {
-      setPagination((p) => ({
-        ...p,
-        pageIndex: 0,
-        pageSize: effectivePageSize,
-      }));
+      setPagination((p) => ({ ...p, pageSize: effectivePageSize }));
     }
+  }, [paginationEnabled, effectivePageSize]);
+
+  useEffect(() => {
+    if (!paginationEnabled) return;
+    const maxPageIndex = Math.max(0, Math.ceil(events.length / effectivePageSize) - 1);
+    setPagination((p) => {
+      if (p.pageIndex <= maxPageIndex) return p;
+      return { ...p, pageIndex: maxPageIndex };
+    });
   }, [events, paginationEnabled, effectivePageSize]);
 
   const handleRowSelectionChange = useCallback(
