@@ -435,7 +435,9 @@ export function EventsPageContent({ sites }: EventsPageContentProps) {
         const parts: string[] = ["更新成功"];
         if (newCount > 0) parts.push(`新增 ${newCount} 个事件`);
         if (changedCount > 0) parts.push(`变更 ${changedCount} 个事件`);
-        const resultMsg = parts.length > 1 ? parts.join("，") : parts[0];
+        if (newCount === 0 && changedCount === 0)
+          parts.push("无新增事件及变更事件");
+        const resultMsg = parts.join("，");
         setUpdateResult(resultMsg);
         toast.success(resultMsg);
       } catch (err) {
