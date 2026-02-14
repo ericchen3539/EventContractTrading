@@ -95,9 +95,12 @@ export function AccountPageContent() {
     }
   }
 
+  const cardClass =
+    "rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:shadow-none";
+
   if (loading) {
     return (
-      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
+      <div className={`mt-6 ${cardClass} p-8`}>
         <p className="text-slate-500 dark:text-slate-400">加载中…</p>
       </div>
     );
@@ -105,7 +108,7 @@ export function AccountPageContent() {
 
   if (!profile) {
     return (
-      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
+      <div className={`mt-6 ${cardClass} p-8`}>
         <p className="text-red-600 dark:text-red-400">无法加载用户信息</p>
       </div>
     );
@@ -113,7 +116,7 @@ export function AccountPageContent() {
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <div className={cardClass}>
         <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">
           基本信息
         </h2>
@@ -158,7 +161,7 @@ export function AccountPageContent() {
       </div>
 
       {profile.hasPassword && (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className={cardClass}>
           <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">
             修改密码
           </h2>
@@ -219,7 +222,7 @@ export function AccountPageContent() {
       )}
 
       {!profile.hasPassword && (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className={cardClass}>
           <p className="text-slate-500 dark:text-slate-400">
             您通过 Google 登录，本站无独立密码，无法在此修改密码。
           </p>
