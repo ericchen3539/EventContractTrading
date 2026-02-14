@@ -63,7 +63,6 @@ export function DashboardNav() {
     { href: "/guide", label: "用户指南" },
     { href: "/me/events", label: "用户事件" },
     { href: "/me/markets", label: "用户市场" },
-    { href: "/me/account", label: "用户账号" },
     { href: "/me/trading", label: "交易账户" },
     { href: "/sites", label: "站点管理" },
     { href: "/events", label: "事件更新" },
@@ -139,14 +138,6 @@ export function DashboardNav() {
               </div>
               <div className="border-t border-slate-200 dark:border-slate-700" />
               <div className="py-1">
-                <Link
-                  href="/me/events"
-                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
-                  onClick={() => setDropdownOpen(false)}
-                  role="menuitem"
-                >
-                  Dashboard
-                </Link>
                 <Link
                   href="/me/account"
                   className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
