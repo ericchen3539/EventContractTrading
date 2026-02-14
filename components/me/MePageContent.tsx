@@ -14,6 +14,7 @@ import {
 import type { SiteItem, SectionItem } from "@/components/events-table/EventsPageContent";
 
 const ATTENTION_FILTER_STORAGE_KEY = "me-page-attention-filter";
+const FOLLOWED_DAYS_FILTER_STORAGE_KEY = "me-page-followed-days-filter";
 const BROWSE_PREFS_STORAGE_KEY = "me-page-browse-prefs";
 
 type AttentionFilterPreset = "0" | "1" | "2" | "3" | "4" | "5" | "custom";
@@ -50,6 +51,46 @@ function saveAttentionFilterToStorage(
   try {
     localStorage.setItem(
       ATTENTION_FILTER_STORAGE_KEY,
+      JSON.stringify({ preset, custom })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function loadFollowedDaysFromStorage(): {
+  preset: DaysFilterPreset;
+  custom: number;
+} {
+  if (typeof window === "undefined") return { preset: "all", custom: 1 };
+  try {
+    const raw = localStorage.getItem(FOLLOWED_DAYS_FILTER_STORAGE_KEY);
+    if (!raw) return { preset: "all", custom: 1 };
+    const parsed = JSON.parse(raw) as { preset?: string; custom?: number };
+    const preset = ["3", "7", "14", "30", "all", "custom"].includes(
+      parsed?.preset ?? ""
+    )
+      ? (parsed.preset as DaysFilterPreset)
+      : "all";
+    const custom =
+      typeof parsed?.custom === "number" &&
+      !Number.isNaN(parsed.custom) &&
+      parsed.custom >= 1
+        ? parsed.custom
+        : 1;
+    return { preset, custom };
+  } catch {
+    return { preset: "all", custom: 1 };
+  }
+}
+
+function saveFollowedDaysToStorage(
+  preset: DaysFilterPreset,
+  custom: number
+) {
+  try {
+    localStorage.setItem(
+      FOLLOWED_DAYS_FILTER_STORAGE_KEY,
       JSON.stringify({ preset, custom })
     );
   } catch {
@@ -127,10 +168,30 @@ export function MePageContent({ sites }: MePageContentProps) {
     setAttentionFilterPreset(preset);
     setAttentionFilterCustom(custom);
   }, []);
+
+  const [followedDaysPreset, setFollowedDaysPreset] =
+    useState<DaysFilterPreset>("all");
+  const [followedDaysCustom, setFollowedDaysCustom] = useState(1);
+
+  useEffect(() => {
+    const { preset, custom } = loadFollowedDaysFromStorage();
+    setFollowedDaysPreset(preset);
+    setFollowedDaysCustom(custom);
+  }, []);
+
   const attentionFilter =
     attentionFilterPreset === "custom"
       ? attentionFilterCustom
       : parseInt(attentionFilterPreset, 10);
+
+  const followedDaysFilter: number | "all" =
+    followedDaysPreset === "custom"
+      ? (Number.isFinite(followedDaysCustom) && followedDaysCustom >= 1
+          ? Math.min(365, Math.floor(followedDaysCustom))
+          : 7)
+      : followedDaysPreset === "all"
+        ? "all"
+        : parseInt(followedDaysPreset, 10) || 7;
 
   const siteIds = useMemo(() => sites.map((s) => s.id), [sites]);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
@@ -232,6 +293,10 @@ export function MePageContent({ sites }: MePageContentProps) {
       } else {
         url.searchParams.set("minAttention", String(attentionFilter));
       }
+      url.searchParams.set(
+        "days",
+        followedDaysFilter === "all" ? "all" : String(followedDaysFilter)
+      );
       const res = await fetch(url.toString());
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
@@ -244,7 +309,7 @@ export function MePageContent({ sites }: MePageContentProps) {
     } finally {
       setLoadingFollowed(false);
     }
-  }, [viewMode, attentionFilter]);
+  }, [viewMode, attentionFilter, followedDaysFilter]);
 
   useEffect(() => {
     fetchFollowedEvents();
@@ -770,6 +835,63 @@ export function MePageContent({ sites }: MePageContentProps) {
               )}
             </div>
           )}
+          <div className="ml-2 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-slate-600 dark:text-slate-400">
+              天数范围（最近交易截止时间）
+            </span>
+            {(["3", "7", "14", "30", "all"] as const).map((p) => (
+              <label
+                key={p}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
+              >
+                <input
+                  type="radio"
+                  name="followed-days-filter"
+                  checked={followedDaysPreset === p}
+                  onChange={() => {
+                    setFollowedDaysPreset(p);
+                    saveFollowedDaysToStorage(p, followedDaysCustom);
+                  }}
+                  className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+                />
+                {p === "all" ? "全部" : `${p}天`}
+              </label>
+            ))}
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800">
+              <input
+                type="radio"
+                name="followed-days-filter"
+                checked={followedDaysPreset === "custom"}
+                onChange={() => {
+                  setFollowedDaysPreset("custom");
+                  saveFollowedDaysToStorage("custom", followedDaysCustom);
+                }}
+                className="h-3.5 w-3.5 rounded-full border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600"
+              />
+              自定义
+            </label>
+            {followedDaysPreset === "custom" && (
+              <>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={followedDaysCustom}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!Number.isNaN(v) && v >= 1) {
+                      setFollowedDaysCustom(Math.min(365, v));
+                      saveFollowedDaysToStorage("custom", Math.min(365, v));
+                    }
+                  }}
+                  className="w-14 rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800"
+                />
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  天
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
         {loadingFollowed ? (

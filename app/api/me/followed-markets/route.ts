@@ -5,9 +5,11 @@
  *   - minAttention: show markets with attentionLevel >= value (default 1)
  *   - unfollowed: when "true", show only attentionLevel === 0
  *   - mode: "top" = show only markets with attentionLevel === max
+ *   - days: filter by nextTradingCloseTime/closeTime <= today + N days; "all" or omit = no filter
  */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Prisma } from "@prisma/client";
 import { isActiveStatus } from "@/lib/constants";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -24,12 +26,13 @@ export async function GET(request: Request) {
     const minAttentionParam = searchParams.get("minAttention");
     const showUnfollowed = searchParams.get("unfollowed") === "true";
     const mode = searchParams.get("mode"); // "top" = 我最关注
+    const daysParam = searchParams.get("days");
 
-    type WhereClause = {
+    type WhereClause = Prisma.UserFollowedMarketWhereInput & {
       userId: string;
       attentionLevel?: number | { gte: number };
     };
-    let whereClause: WhereClause = {
+    const whereClause: WhereClause = {
       userId: session.user.id,
     };
 
@@ -49,6 +52,20 @@ export async function GET(request: Request) {
           : 1;
       if (!Number.isNaN(minAttention) && minAttention >= 0) {
         whereClause.attentionLevel = { gte: minAttention };
+      }
+    }
+
+    if (daysParam && daysParam !== "all") {
+      const parsed = parseInt(daysParam, 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        const days = Math.min(365, parsed);
+        const cutoff = new Date(Date.now() + days * 86400000);
+        whereClause.market = {
+          OR: [
+            { nextTradingCloseTime: { lte: cutoff } },
+            { nextTradingCloseTime: null, closeTime: { lte: cutoff } },
+          ],
+        };
       }
     }
 
