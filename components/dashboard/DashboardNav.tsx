@@ -77,11 +77,11 @@ export function DashboardNav() {
     session?.user?.name || session?.user?.email || "用户";
 
   const navLinks = [
+    { href: "/sites", label: "站点管理" },
+    { href: "/events", label: "事件更新" },
     { href: "/me/events", label: "用户事件" },
     { href: "/me/markets", label: "用户市场" },
     { href: "/me/trading", label: "交易账户" },
-    { href: "/sites", label: "站点管理" },
-    { href: "/events", label: "事件更新" },
   ];
 
   async function handleSignOut() {
