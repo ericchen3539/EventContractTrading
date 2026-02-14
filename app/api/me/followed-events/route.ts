@@ -28,6 +28,18 @@ export async function GET(request: Request) {
     const mode = searchParams.get("mode"); // "top" = 我最关注
     const daysParam = searchParams.get("days");
 
+    let eventCacheDaysFilter: Prisma.EventCacheWhereInput | null = null;
+    if (daysParam && daysParam !== "all") {
+      const parsed = parseInt(daysParam, 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        const days = Math.min(365, parsed);
+        const cutoff = new Date(Date.now() + days * 86400000);
+        eventCacheDaysFilter = {
+          nextTradingCloseTime: { lte: cutoff },
+        };
+      }
+    }
+
     type WhereClause = Prisma.UserFollowedEventWhereInput & {
       userId: string;
       attentionLevel?: number | { gte: number };
@@ -39,11 +51,20 @@ export async function GET(request: Request) {
     if (showUnfollowed) {
       whereClause.attentionLevel = 0;
     } else if (mode === "top") {
+      const aggregateWhere: Prisma.UserFollowedEventWhereInput = {
+        userId: session.user.id,
+      };
+      if (eventCacheDaysFilter) {
+        aggregateWhere.eventCache = eventCacheDaysFilter;
+      }
       const maxRow = await prisma.userFollowedEvent.aggregate({
-        where: { userId: session.user.id },
+        where: aggregateWhere,
         _max: { attentionLevel: true },
       });
       const maxLevel = maxRow._max.attentionLevel ?? 0;
+      if (maxLevel === 0) {
+        return NextResponse.json([]);
+      }
       whereClause.attentionLevel = maxLevel;
     } else {
       const minAttention =
@@ -55,15 +76,8 @@ export async function GET(request: Request) {
       }
     }
 
-    if (daysParam && daysParam !== "all") {
-      const parsed = parseInt(daysParam, 10);
-      if (!Number.isNaN(parsed) && parsed > 0) {
-        const days = Math.min(365, parsed);
-        const cutoff = new Date(Date.now() + days * 86400000);
-        whereClause.eventCache = {
-          nextTradingCloseTime: { lte: cutoff },
-        };
-      }
+    if (eventCacheDaysFilter) {
+      whereClause.eventCache = eventCacheDaysFilter;
     }
 
     const rows = await prisma.userFollowedEvent.findMany({

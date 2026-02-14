@@ -28,6 +28,21 @@ export async function GET(request: Request) {
     const mode = searchParams.get("mode"); // "top" = 我最关注
     const daysParam = searchParams.get("days");
 
+    let marketDaysFilter: Prisma.MarketWhereInput | null = null;
+    if (daysParam && daysParam !== "all") {
+      const parsed = parseInt(daysParam, 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        const days = Math.min(365, parsed);
+        const cutoff = new Date(Date.now() + days * 86400000);
+        marketDaysFilter = {
+          OR: [
+            { nextTradingCloseTime: { lte: cutoff } },
+            { nextTradingCloseTime: null, closeTime: { lte: cutoff } },
+          ],
+        };
+      }
+    }
+
     type WhereClause = Prisma.UserFollowedMarketWhereInput & {
       userId: string;
       attentionLevel?: number | { gte: number };
@@ -39,11 +54,20 @@ export async function GET(request: Request) {
     if (showUnfollowed) {
       whereClause.attentionLevel = 0;
     } else if (mode === "top") {
+      const aggregateWhere: Prisma.UserFollowedMarketWhereInput = {
+        userId: session.user.id,
+      };
+      if (marketDaysFilter) {
+        aggregateWhere.market = marketDaysFilter;
+      }
       const maxRow = await prisma.userFollowedMarket.aggregate({
-        where: { userId: session.user.id },
+        where: aggregateWhere,
         _max: { attentionLevel: true },
       });
       const maxLevel = maxRow._max.attentionLevel ?? 0;
+      if (maxLevel === 0) {
+        return NextResponse.json([]);
+      }
       whereClause.attentionLevel = maxLevel;
     } else {
       const minAttention =
@@ -55,18 +79,8 @@ export async function GET(request: Request) {
       }
     }
 
-    if (daysParam && daysParam !== "all") {
-      const parsed = parseInt(daysParam, 10);
-      if (!Number.isNaN(parsed) && parsed > 0) {
-        const days = Math.min(365, parsed);
-        const cutoff = new Date(Date.now() + days * 86400000);
-        whereClause.market = {
-          OR: [
-            { nextTradingCloseTime: { lte: cutoff } },
-            { nextTradingCloseTime: null, closeTime: { lte: cutoff } },
-          ],
-        };
-      }
+    if (marketDaysFilter) {
+      whereClause.market = marketDaysFilter;
     }
 
     const rows = await prisma.userFollowedMarket.findMany({
